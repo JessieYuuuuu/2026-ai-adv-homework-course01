@@ -26,13 +26,13 @@ describe('ECPay CheckMacValue', () => {
     expect(verifyCheckMacValue({ ...fields, TradeAmt: '999' }, config)).toBe(false);
   });
 
-  it('builds a staging form that displays all available payment methods', () => {
+  it('builds a staging credit-card payment form', () => {
     const form = buildPaymentForm({
       attempt: { merchant_trade_no: 'FLTEST123', item_name: '測試花束 x 1' },
       order: { id: 'order-id', total_amount: 1000 }, items: [], config
     });
     expect(form.action).toBe(config.paymentAction);
-    expect(form.fields.ChoosePayment).toBe('ALL');
+    expect(form.fields.ChoosePayment).toBe('Credit');
     expect(form.fields.TotalAmount).toBe('1000');
     expect(form.fields.CheckMacValue).toHaveLength(64);
     expect(form.fields.ReturnURL).toBe('http://localhost/ecpay/notify-unavailable');

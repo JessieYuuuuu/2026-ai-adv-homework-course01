@@ -50,11 +50,12 @@ dotenv 在 app.js 開頭載入；已存在程序環境值預設不被 `.env` 覆
 | ADMIN_EMAIL | database.js seed 查找／新增管理員 | 選填 | `admin@hexschool.com` |
 | ADMIN_PASSWORD | database.js 新管理員 hash | 選填 | `12345678`；不修改已存在帳號 |
 | NODE_ENV | database.js seed bcrypt cost；框架／測試環境 | 選填 | 專案不設定預設；恰為 test 時 seed cost=1，其他為10；註冊仍固定10 |
-| BASE_URL | 範本預留 | 現況不需要 | 範本 localhost:3001，原始碼無讀取 |
-| ECPAY_MERCHANT_ID | 範本預留商店識別 | 現況不需要 | 範本 3002607，無 runtime 接線 |
-| ECPAY_HASH_KEY | 範本金流參數 | 現況不需要 | 範本有測試值，無 runtime 接線；勿把正式密鑰寫進文件 |
-| ECPAY_HASH_IV | 範本金流參數 | 現況不需要 | 範本有測試值，無 runtime 接線 |
-| ECPAY_ENV | 範本預留環境 | 現況不需要 | 範本 staging，無 runtime 接線 |
+| DATABASE_PATH | `src/database.js` 的 SQLite 檔案位置 | 僅測試使用 | 未設定時仍為根目錄 `database.sqlite`；`tests/setup.js` 在載入 app 前指定唯一暫存檔，避免測試污染開發資料庫 |
+| BASE_URL | `src/services/ecpayService.js` 的 ClientBackURL | ECPay 付款時必要 | 未設定時使用 `http://localhost:3001`；必須是綠界能讓瀏覽器返回的實際位址 |
+| ECPAY_MERCHANT_ID | ECPay 商店識別 | ECPay 付款時必要 | 缺少時 `POST /payment` 回 503 PAYMENT_NOT_CONFIGURED |
+| ECPAY_HASH_KEY | 產生與驗證 CheckMacValue | ECPay 付款時必要 | 僅留在後端環境；不得交給瀏覽器或寫入日誌 |
+| ECPAY_HASH_IV | 產生與驗證 CheckMacValue | ECPay 付款時必要 | 僅留在後端環境；不得交給瀏覽器或寫入日誌 |
+| ECPAY_ENV | 限制 ECPay 執行環境 | ECPay 付款時必要 | 必須精確為 `staging`，其他值明確拒絕，避免誤連正式環境 |
 
 沒有 DATABASE_URL／DB_PATH；設定這些變數不会切換資料庫。所有執行環境都由 src/database.js 定位同一根目錄 database.sqlite。測試 helper 使用固定管理員帳密，與自訂 ADMIN_* 可能不相容。變更 JWT_SECRET 会使以舊 secret 簽出的 JWT 驗證失敗，但登出只刪本機資料。
 

@@ -4,7 +4,7 @@
 
 這是將花卉購物網站前台、管理後台與 REST API 放在同一個 Node.js 專案的教學實作。套件名稱為 `backend-project`，`package.json` 版本為 `1.0.0`、`private: true`。網站不是獨立 Vue SPA：Express 回傳 EJS 頁面，頁面再以瀏覽器中的 Vue 3 與 Fetch 載入、操作資料。
 
-訪客可以瀏覽商品、使用購物車；註冊登入後可以建立訂單、查看個人訂單並前往 ECPay 測試付款頁選擇方式（含信用卡與網路 ATM）。訂單付款狀態由後端主動查詢、驗簽後更新。管理員可新增、編輯、刪除商品，以及查看全站訂單。所有資料保存在專案根目錄 SQLite 檔案，不需要另啟資料庫服務。
+訪客可以瀏覽商品、使用購物車；註冊登入後可以建立訂單、查看個人訂單並前往 ECPay 測試信用卡付款頁。訂單付款狀態由後端主動查詢、驗簽後更新。管理員可新增、編輯、刪除商品，以及查看全站訂單。所有資料保存在專案根目錄 SQLite 檔案，不需要另啟資料庫服務。
 
 文件以目前原始碼為準。「已實作」表示路由及畫面已有對應程式，不代表所有邊界、安全性或瀏覽器流程都有自動測試。ECPay 僅接上測試環境，尚未完成無 Server Notify 的實際端到端驗收；訪客購物車合併、運費、訂單取消、退款與物流追蹤尚未實作；商品文案中的月配訂閱亦不是週期扣款功能。
 
@@ -23,7 +23,7 @@
 | 瀏覽器互動 | Vue 3 CDN global production build | 每頁 `createApp(...).mount('#app')`；不由 npm 鎖定確切版本 |
 | 樣式 | Tailwind CSS／CLI 4.2.2 | CSS-first `@theme`，產生 `/css/output.css` |
 | 文件生成 | swagger-jsdoc 6.2.8 | `@openapi` 註解轉為 OpenAPI 3.0.3 JSON |
-| 測試 | Vitest 2.1.9、Supertest 7.2.2 | 6 份 API 整合測試、32 個案例 |
+| 測試 | Vitest 2.1.9、Supertest 7.2.2 | 8 份測試檔、40 個案例；含 ECPay 簽章／表單及付款排程模擬測試 |
 | 外部資源 | unpkg、Google Fonts、Unsplash | Vue、中文字型與商品／形象圖片；瀏覽器需可連線 |
 
 better-sqlite3 鎖定版本宣告支援 Node `20.x || 22.x || 23.x || 24.x || 25.x`，bcrypt 要求 Node `>=18`。原生套件安裝可能需要下載預編譯檔，缺少相符檔案時會進入本機編譯；不能只看 Express 的最低 Node 版本選擇環境。
@@ -59,7 +59,7 @@ export FRONTEND_URL='http://localhost:3001'
 npm start
 ```
 
-`.env.example` 的 `FRONTEND_URL` 是 `http://localhost:5173`，但本專案沒有 Vite 前端伺服器；EJS 與 API 預設同在 3001。`BASE_URL` 與 ECPay 變數目前沒有執行程式讀取。完整變數表見 [DEVELOPMENT.md](./DEVELOPMENT.md#環境變數)。
+`.env.example` 的 `FRONTEND_URL` 是 `http://localhost:5173`，但本專案沒有 Vite 前端伺服器；EJS 與 API 預設同在 3001。ECPay 測試付款需設定 `BASE_URL`、`ECPAY_ENV=staging`、`ECPAY_MERCHANT_ID`、`ECPAY_HASH_KEY` 與 `ECPAY_HASH_IV`；缺少或環境不是 staging 時，建立付款交易會回 503。完整變數表見 [DEVELOPMENT.md](./DEVELOPMENT.md#環境變數)。
 
 ### 3. 開啟與檢查
 
@@ -78,7 +78,7 @@ http://localhost:3001/admin/orders     訂單管理
 Invoke-RestMethod -Uri 'http://localhost:3001/api/products?page=1&limit=2'
 ```
 
-啟動成功會印出 `Server running on port 3001`。第一次載入 `app.js` 會建立五張表、預設管理員及八筆花卉商品。預設管理員是 `admin@hexschool.com`／`12345678`；若首次初始化前設定 `ADMIN_EMAIL`／`ADMIN_PASSWORD`，則改用設定值。已有相同 email 時不修改密碼、不提升角色；變更 `.env` 不會重設既有帳號。
+啟動成功會印出 `Server running on port 3001`。第一次載入 `app.js` 會建立七張表、預設管理員及八筆花卉商品；直接執行 `server.js` 另會啟動付款查詢排程。預設管理員是 `admin@hexschool.com`／`12345678`；若首次初始化前設定 `ADMIN_EMAIL`／`ADMIN_PASSWORD`，則改用設定值。已有相同 email 時不修改密碼、不提升角色；變更 `.env` 不會重設既有帳號。
 
 商品 seed 僅在商品表完全為空時執行，不會補回缺少的一筆，也不會恢復被消耗的庫存。重啟不是資料重置方式。
 

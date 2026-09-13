@@ -56,7 +56,7 @@ flowchart LR
 
 | 檔案 | 用途 |
 | --- | --- |
-| `src/database.js` | 建立單一 SQLite connection、WAL／外鍵、五表 schema、管理員和八商品 seed、匯出 db |
+| `src/database.js` | 建立單一 SQLite connection、WAL／外鍵、付款交易與排程狀態在內的七表 schema、管理員和八商品 seed、匯出 db |
 | `src/middleware/sessionMiddleware.js` | 將非空 `x-session-id` 放到 `req.sessionId`，不建立 server session |
 | `src/middleware/authMiddleware.js` | 必要 Bearer JWT、HS256 verify、使用者存在查核、設定 req.user |
 | `src/middleware/adminMiddleware.js` | 檢查 req.user.role 是否 admin，否則 403 |
@@ -65,6 +65,8 @@ flowchart LR
 | `src/routes/productRoutes.js` | 公開商品分頁列表及詳情 |
 | `src/routes/cartRoutes.js` | 私有 dualAuth、owner SQL 選擇、查詢／累加／取代數量／刪除購物車項目 |
 | `src/routes/orderRoutes.js` | 會員建單交易、個人列表／詳情、ECPay 付款表單與本人查詢 |
+| `src/services/ecpayService.js` | 僅限 staging 的設定檢查、CheckMacValue 建立／驗證、AIO 表單與 QueryTradeInfo/V5 請求 |
+| `src/services/paymentScheduler.js` | 付款查詢節流、403 暫停、結果驗證、訂單狀態更新與 30 秒背景掃描 |
 | `src/routes/adminProductRoutes.js` | 管理員商品分頁、建立、部分更新與受限制的刪除 |
 | `src/routes/adminOrderRoutes.js` | 全站訂單分頁及狀態篩選、附買家資料的詳情 |
 | `src/routes/pageRoutes.js` | renderFront／renderAdmin 兩階段渲染、9 個頁面 GET，不執行伺服器身分檢查 |
@@ -83,7 +85,7 @@ flowchart LR
 | `public/js/pages/checkout.js` | requireAuth、收件欄位驗證、空車回購物車、防重複提交及建單導頁 |
 | `public/js/pages/login.js` | 登入／註冊 tabs、表單驗證、存 token／user、讀 redirect 導頁 |
 | `public/js/pages/orders.js` | requireAuth、載入个人訂單、狀態文案、失敗時顯示空列表 |
-| `public/js/pages/order-detail.js` | dataset 訂單與提示參數、讀詳情、success／fail 模擬付款、付款結果文案 |
+| `public/js/pages/order-detail.js` | 讀訂單與付款摘要、建立 AIO 表單並導轉、付款頁返回後查詢，以及手動查詢狀態 |
 | `public/js/pages/admin-products.js` | limit=10 列表、新增／編輯 modal、刪除確認與重載當頁 |
 | `public/js/pages/admin-orders.js` | limit=10 列表、watch statusFilter 後回第一頁、詳情 modal |
 | `public/css/input.css` | Tailwind import、11 個色彩 token、Noto Sans TC 與 body 基礎樣式 |
@@ -103,11 +105,11 @@ flowchart LR
 | `views/partials/notification.ejs` | 提供 notification-toast 容器 |
 | `views/pages/index.ejs` | Hero、當頁前四筆推薦、商品網格與分頁、靜態品牌／好評／配送文案 |
 | `views/pages/product-detail.ejs` | data-product-id、商品圖文、數量、庫存與加購鈕 |
-| `views/pages/cart.ejs` | 空車、項目、數量控制、刪除 modal、前端運費摘要 |
-| `views/pages/checkout.ejs` | 收件欄位、錯誤提示、商品與運費摘要、送出狀態 |
+| `views/pages/cart.ejs` | 空車、項目、數量控制、刪除 modal 與商品小計摘要 |
+| `views/pages/checkout.ejs` | 收件欄位、錯誤提示、商品小計摘要與送出狀態 |
 | `views/pages/login.ejs` | 登入／註冊雙表單、欄位錯誤、送出禁用 |
 | `views/pages/orders.ejs` | 个人訂單卡片、日期、總額、狀態與詳情連結 |
-| `views/pages/order-detail.ejs` | data-order-id／data-payment-result、訂單快照、收件資料與 pending 付款按鈕 |
+| `views/pages/order-detail.ejs` | data-order-id、訂單快照、收件資料、付款狀態與付款／查詢按鈕 |
 | `views/pages/admin/products.ejs` | 商品表格、分頁、編輯 modal、v-model.number 數值欄位、刪除 modal |
 | `views/pages/admin/orders.ejs` | 狀態下拉、訂單表格、分頁、買家／收件人／明細 modal |
 | `views/pages/404.ejs` | HTML 404 畫面，無對應頁面 JS |
@@ -123,6 +125,8 @@ flowchart LR
 | `tests/orders.test.js` | 6 案例：建單、空車、無認證、列表、詳情、不存在 |
 | `tests/adminProducts.test.js` | 6 案例：列表、建立、更新、刪除、普通會員／無 token 拒絕 |
 | `tests/adminOrders.test.js` | 4 案例：列表、pending 篩選、詳情、普通會員拒絕 |
+| `tests/ecpayService.test.js` | 3 案例：官方 CheckMacValue 向量、竄改金額拒絕、staging AIO 表單欄位 |
+| `tests/paymentScheduler.test.js` | 5 案例：建立付款表單、重複付款拒絕、驗簽入帳、金額不符、403 暫停與對外節流 |
 
 ## 啟動與請求生命週期
 
@@ -134,7 +138,7 @@ flowchart LR
 6. 全域 middleware 依序為 CORS → express.json → express.urlencoded({ extended:false }) → sessionMiddleware。CORS origin 使用 FRONTEND_URL 或 localhost:3001，未啟用 credentials。
 7. 按原碼順序掛 auth、admin products、admin orders、products、cart、orders API，再掛 pageRoutes。
 8. 未匹配且 req.path 以 `/api` 開頭時 JSON 404；其他走 EJS 404。最後註冊四參數 errorHandler。
-9. 返回 server.js 後，只有 `require.main === module` 才檢查 JWT_SECRET、listen PORT。匯入 app 的測試不啟用固定 3001 監聽，也不經這項秘密值檢查。
+9. 返回 server.js 後，只有 `require.main === module` 才檢查 JWT_SECRET、listen PORT，並啟動 30 秒付款排程。匯入 app 的測試不啟用固定 3001 監聽、付款排程或這項秘密值檢查。
 
 建表先於 JWT_SECRET 啟動檢查：即使伺服器因缺 secret 退出，仍可能已建立 DB。測試或腳本只要 require app 或 database 就可能寫檔，並不是純讀操作。
 
@@ -152,7 +156,7 @@ flowchart LR
 | `/api/admin/products` | `src/routes/adminProductRoutes.js` | router 全域 Admin | GET `/`、POST `/`、PUT `/:id`、DELETE `/:id` | 全站商品管理；PUT 實際允許部分更新 |
 | `/api/admin/orders` | `src/routes/adminOrderRoutes.js` | router 全域 Admin | GET `/`、GET `/:id` | 全站訂單查詢，沒有修改狀態端點 |
 
-合計 19 個 method/path 操作、14 個 OpenAPI path 模板；頁面路由不在 OpenAPI 中。欄位、查詢與所有業務錯誤見 [FEATURES.md](./FEATURES.md)。
+合計 21 個 method/path 操作、16 個 OpenAPI path 模板；頁面路由不在 OpenAPI 中。欄位、查詢與所有業務錯誤見 [FEATURES.md](./FEATURES.md)。
 
 | 頁面 GET | 模板名稱／pageScript | 伺服器傳入 locals |
 | --- | --- | --- |
@@ -284,7 +288,28 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 | product_price | INTEGER | NN，無 CHECK | 建單當下價格快照 |
 | quantity | INTEGER | NN，無 CHECK | 建單數量快照 |
 
-所有外鍵未指定 ON DELETE CASCADE／ON UPDATE 行為，不能假設會自動清除依賴列。沒有其他顯式索引，除 PK／UNIQUE 所需索引外未建立 owner 或日期查詢索引。
+### payment_attempts
+
+每次建立 ECPay 付款會保存一筆交易。局部唯一索引確保同一訂單同時至多一筆 `pending`；付款失敗後只有經驗簽的失敗才可再建交易。
+
+| 欄位 | 宣告型別 | 約束／預設 | 用途 |
+| --- | --- | --- | --- |
+| id | TEXT | PK | 付款交易 UUID |
+| order_id | TEXT | NN、FK orders(id) | 所屬訂單 |
+| merchant_id、environment | TEXT | NN；environment 只允許 staging | 查詢結果的商店與環境比對 |
+| merchant_trade_no | TEXT | NN、UQ | 傳給 ECPay 的交易編號 |
+| amount、item_name | INTEGER／TEXT | amount > 0、皆 NN | 送往 ECPay 的已保存訂單金額與品名快照 |
+| status | TEXT | NN、default pending、CHECK pending/paid/failed | 交易確認狀態 |
+| trade_no、payment_date、trade_status | TEXT | 可 NULL | ECPay 驗簽回應中的交易資訊 |
+| last_queried_at、next_query_at、auto_query_until、returned_at | TEXT | next／auto NN | 查詢節流、24 小時自動追查與返回紀錄 |
+| error_code | TEXT | 可 NULL | 網路、簽章、金額或未知付款狀態的最近錯誤 |
+| created_at、updated_at | TEXT | NN、default datetime('now') | 建立與更新時間 |
+
+### payment_scheduler_state
+
+此單列狀態表以 `id=1` 保存全部交易共用的 `paused_until` 與 `last_outbound_at`。收到 ECPay HTTP 403 時會持久暫停 30 分鐘；一般對外查詢至少相隔 5 秒，即使重啟也讀取這筆既有狀態。
+
+所有外鍵未指定 ON DELETE CASCADE／ON UPDATE 行為，不能假設會自動清除依賴列。除 PK／UNIQUE 所需索引外，僅 `payment_attempts` 有 pending 訂單局部唯一索引與 `(status, next_query_at)` 排程索引；仍未建立一般 owner 或訂單日期查詢索引。
 
 時間以 SQLite datetime('now') 產生 UTC 文字（沒有 Z）；order_no 的日期由 JavaScript toISOString 取 UTC 日期。瀏覽器直接 `new Date(created_at).toLocaleDateString('zh-TW')`，未補 UTC 標記，跨時區解析需另處理。訂單扣庫存不更新 products.updated_at，該欄不代表所有庫存異動時間。
 
@@ -300,7 +325,7 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 
 ## 付款與第三方整合
 
-現行付款流程：本人登入 → POST `/:id/payment` 建立唯一待確認交易並取得 AIO 表單欄位（`ChoosePayment=ALL`）→ 瀏覽器同頁 POST 至綠界測試付款頁 → 使用者可選信用卡或測試商店提供的網路 ATM 等方式，並經 ClientBackURL 回到訂單頁 → 後端於付款後 10 分鐘主動查詢並驗證 CheckMacValue、MerchantID、MerchantTradeNo 與金額 → 才更新為 paid 或已確認 failed。背景排程每 30 秒掃描到期資料，但單一交易至少間隔 10 分鐘，403 會持久暫停 30 分鐘。
+現行付款流程：本人登入 → POST `/:id/payment` 建立唯一待確認交易並取得 AIO 表單欄位（`ChoosePayment=Credit`）→ 瀏覽器同頁 POST 至綠界測試信用卡付款頁，並經 ClientBackURL 回到訂單頁 → 後端於付款後 10 分鐘主動查詢並驗證 CheckMacValue、MerchantID、MerchantTradeNo 與金額 → 才更新為 paid 或已確認 failed。背景排程每 30 秒掃描到期資料，但單一交易至少間隔 10 分鐘，403 會持久暫停 30 分鐘。ATM、超商、條碼與 BNPL 屬離線付款，官方要求等待通知，因此不納入無 Server Notify 的本機流程。
 
 失敗付款不回補庫存、不重開購物車；只有綠界回傳 `TradeStatus=10200095` 的已驗證失敗可建立新交易。瀏覽器 query／返回網址不改資料庫。僅支援 ECPay staging，尚未完成無 Server Notify 的真實端到端驗收。
 

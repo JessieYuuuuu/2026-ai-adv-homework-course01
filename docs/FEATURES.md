@@ -6,20 +6,20 @@
 
 | 功能 | 狀態 | 可驗證範圍／限制 |
 | --- | --- | --- |
-| 公開商品列表、分頁、詳情 | 已實作 | 4 個 API 測試；無搜尋、分類、上下架欄位 |
-| 註冊、登入、profile | 已實作 | 6 個 API 測試；無改密碼、refresh、登出撤銷 API |
-| 訪客／會員購物車 | 已實作 | 6 個 API 測試；JWT 優先、owner 分離 |
-| 登入後合併訪客車 | 未實作 | session 車保留，會員查詢不會讀它 |
-| 收件資料與交易建單 | 已實作 | 基本建單／空車驗證；交易失敗及併發缺乏測試 |
-| 個人訂單列表／詳情 | 已實作 | 限本人；列表沒有分頁 |
-| ECPay 測試付款方式 | 部分 | AIO 顯示測試商店可用方式（含信用卡與網路 ATM）、查詢驗簽與持久排程；尚未完成實際付款端到端驗收 |
-| 後台商品 CRUD | 已實作 | 6 個 API 測試；刪除可能受購物車外鍵阻擋 |
-| 後台訂單篩選／詳情 | 已實作 | 4 個 API 測試；沒有修改訂單端點 |
-| 運費 | 未實作 | 購物車、結帳與訂單均只顯示和保存商品小計；首頁仍保留未接線的免運宣傳文案 |
-| Toast、空狀態、loading | 已實作 | 無瀏覽器自動測試；部分 API 失敗會偽裝成空列表 |
-| 購物車 badge | 部分 | 初載按項目筆數，加購卻每次加一；刪除／改量不即時同步 |
-| 訂閱、評論、物流、退款 | 未實作 | 靜態文案／商品說明不等於业务功能 |
-| OpenAPI 產生 | 已實作 | JSON 產生器；無 Swagger UI，部分註解與實作不同 |
+| 公開商品列表、分頁、詳情 | ✅ 完成 | 4 個 API 測試；無搜尋、分類、上下架欄位 |
+| 註冊、登入、profile | ✅ 完成 | 6 個 API 測試；無改密碼、refresh、登出撤銷 API |
+| 訪客／會員購物車 | ✅ 完成 | 6 個 API 測試；JWT 優先、owner 分離 |
+| 登入後合併訪客車 | 🚧 進行中 | session 車保留，會員查詢不會讀它 |
+| 收件資料與交易建單 | ✅ 完成 | 基本建單／空車驗證；交易失敗及併發缺乏測試 |
+| 個人訂單列表／詳情 | ✅ 完成 | 限本人；列表沒有分頁 |
+| ECPay 本機主動查詢付款 | ✅ 完成 | AIO、驗簽、持久排程與 8 個付款相關測試完成；真實測試卡／Server Notify 不在本機作業範圍 |
+| 後台商品 CRUD | ✅ 完成 | 6 個 API 測試；刪除可能受購物車外鍵阻擋 |
+| 後台訂單篩選／詳情 | ✅ 完成 | 4 個 API 測試；沒有修改訂單端點 |
+| 運費 | 🚧 進行中 | 購物車、結帳與訂單均只顯示和保存商品小計；首頁仍保留未接線的免運宣傳文案 |
+| Toast、空狀態、loading | ✅ 完成 | 無瀏覽器自動測試；部分 API 失敗會偽裝成空列表 |
+| 購物車 badge | 🚧 進行中 | 初載按項目筆數，加購卻每次加一；刪除／改量不即時同步 |
+| 訂閱、評論、物流、退款 | 🚧 進行中 | 靜態文案／商品說明不等於业务功能 |
+| OpenAPI 產生 | ✅ 完成 | JSON 產生器；無 Swagger UI，部分註解與實作不同 |
 
 ## 共通查詢、格式與錯誤
 
@@ -40,11 +40,14 @@ parseInt 會接受如 `'2abc'` 得 2、`'1.9'` 得 1，不是嚴格型別驗證�
 | 400 VALIDATION_ERROR | 必填、email、數量、價格、庫存或付款 action 不符 |
 | 400 STOCK_INSUFFICIENT | 加購累計量、修改量或建單所需量超過庫存 |
 | 400 CART_EMPTY | 本會員購物車無可 JOIN 的商品項目 |
-| 400 INVALID_STATUS | 非 pending 訂單再次付款 |
+| 400 INVALID_STATUS | 已付款訂單付款，或未經綠界確認失敗的訂單重試付款 |
+| 400 PAYMENT_NOT_STARTED | 尚未建立付款交易就要求查詢 |
 | 401 UNAUTHORIZED | 缺有效 JWT／session、JWT 驗證失敗、帳號已不存在、登入錯密碼 |
 | 403 FORBIDDEN | 通過 JWT 但不是 admin |
 | 404 NOT_FOUND | 商品、自己名下購物車項目或訂單不存在；未知 API |
 | 409 CONFLICT | email 重複；欲刪商品存在 pending 訂單 |
+| 409 PAYMENT_PENDING／PAYMENT_CONFLICT | 已有待確認付款交易，或建立付款交易時發生資料庫衝突 |
+| 503 PAYMENT_NOT_CONFIGURED | ECPay 環境、商店編號或簽章密鑰未設定正確 |
 | 500 INTERNAL_ERROR | 未處理 SQL／型別等錯誤；集中 handler 不暴露細節 |
 
 集中 errorHandler 即使回非 500 status 仍使用 INTERNAL_ERROR，因此格式錯誤 JSON 通常是 400／INTERNAL_ERROR。沒有全面 schema validator；下述「必填」多採 truthy 判斷，不代表所有非字串或純空白輸入皆回 400。
@@ -152,22 +155,25 @@ JWT 必要。查本人所有訂單，依 created_at DESC，回 `{orders:[{id,ord
 
 JWT 必要。用訂單 id 和 req.user.userId 同時查詢；查無或他人訂單皆 404 NOT_FOUND，admin 使用這支一般端點也只看到自己的訂單。成功回完整 orders 列加 items，items 是完整 order_items 列，含 id、order_id、product_id、product_name、product_price、quantity。歷史顯示不 JOIN 現行商品，因此調價／改名不改快照。
 
-## 模擬付款
+## ECPay 測試付款
 
-### PATCH /api/orders/:id/pay
+所有付款端點都要求本人 JWT；訂單不存在或不屬於本人一律回 404 `NOT_FOUND`。瀏覽器不送付款成功／失敗結果，訂單狀態只會在後端查詢 ECPay、驗證 `CheckMacValue`，並比對商店編號、交易編號與金額後才更新。
 
-需要本人 JWT。必填 body `action`，預期只有字串 `success` 或 `fail`；對應 paid／failed。順序是先驗 action，再查本人訂單，最後驗 status=pending。缺 action 或一般不合法字串回 400 VALIDATION_ERROR；不存在／他人訂單 404；非 pending 400 INVALID_STATUS。
+### POST /api/orders/:id/payment
 
-```text
-建立訂單 → pending ── action=success → paid
-                   └─ action=fail    → failed
-```
+不需要 body。後端先檢查 staging 設定，再以已保存的 `orders.total_amount`、訂單明細快照建立一筆 `payment_attempts`，回傳 ECPay AIO 的 `action`、隱藏欄位和 `payment` 摘要。前端將欄位組成同頁 POST 表單；`ChoosePayment=Credit` 限制為可由本機主動查詢確認的測試信用卡流程。ATM、超商、條碼與 BNPL 等離線付款需要 Server Notify，不在本機作業範圍。
 
-成功 200，data 為完整訂單加完整 items。fail 是成功處理「付款失敗」模擬，所以 HTTP 200、error=null、message='付款失敗'；不能只靠 HTTP 200 判斷是否已收款。狀態以回應的 data.status 為準。
+同一訂單已有 `pending` 交易時回 409 `PAYMENT_PENDING`；已付款回 400 `INVALID_STATUS`；failed 訂單僅在最近交易也經驗簽確認為 failed 時才可重建付款，否則回 400 `INVALID_STATUS`。缺少 ECPay 密鑰或 `ECPAY_ENV` 不是 `staging` 回 503 `PAYMENT_NOT_CONFIGURED`。建立交易衝突回 409 `PAYMENT_CONFLICT`。
 
-paid／failed 都不能再付款，沒有補庫存、重試、取消、退費、金流回呼。前端失敗文案「請重試」與無重付機制不一致。UI paymentMessages 用 `failed`，API action 卻用 `fail`；`?payment=cancel` 只顯示取消提示，不新增取消狀態。
+### POST /api/orders/:id/payment/verify
 
-actionMap 是一般 JavaScript 物件，以 `actionMap[action]` truthy 判斷，沒有自有鍵檢查；如原型屬性名稱並非可靠地一律回 VALIDATION_ERROR，可能走到非預期值／SQL 錯誤。未來強化驗證應加明確枚舉測試，不能僅照抄現有判斷。
+不需要 body，查最近一筆付款交易並要求後端主動查詢 ECPay。尚未建立交易回 400 `PAYMENT_NOT_STARTED`；尚未到 `next_query_at`、全域 403 暫停、5 秒對外節流或同筆查詢進行中時仍回 200，`data.result` 分別為 `TOO_EARLY`、`PAUSED`、`THROTTLED` 或 `IN_FLIGHT`，並以 `data.payment` 回報下次可查時間。
+
+查詢回應簽章或商店／交易編號／金額不符時只記錄錯誤並延後查詢，不改訂單。驗證成功的 `TradeStatus=1` 將交易和訂單改為 paid；`10200095` 才改為 failed；`0` 保持 pending 並 10 分鐘後再查。HTTP 403 會保存 30 分鐘全域暫停狀態。
+
+### POST /api/orders/:id/payment/returned
+
+此端點由付款頁返回的訂單頁呼叫，無 body。它只記錄 `returned_at` 並要求一次受既有 403 暫停與 5 秒節流保護的後端查詢；返回網址、query 或瀏覽器本身不會修改付款狀態。尚未建立交易同樣回 400 `PAYMENT_NOT_STARTED`。
 
 ## 後台商品管理
 

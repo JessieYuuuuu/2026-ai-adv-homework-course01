@@ -6,9 +6,26 @@
 
 新增紀錄至少說明使用者／開發者可觀察的變更、影響的模組與資料契約、必要的環境或升級步驟，以及實際執行的測試。若有計畫，連到 `plans/archive/YYYY-MM-DD-feature-name.md`；尚未完成者留在 plans，不能以歸檔代替完成驗證。
 
-## [Unreleased] — 2026-09-11
+## [Unreleased]
 
-### 新增：完整專案文件
+### Added
+
+- 2026-09-13 新增 ECPay staging 信用卡付款流程：建立 AIO `ChoosePayment=Credit` 表單、保存 `payment_attempts` 與排程狀態、以 QueryTradeInfo/V5 查詢並驗證 CheckMacValue、商店編號、交易編號與訂單金額。
+- 新增本人付款建立、到期手動查詢與付款頁返回查詢端點；背景排程每 30 秒掃描到期交易，單筆查詢維持 10 分鐘間隔，HTTP 403 會保存 30 分鐘全域暫停。
+- 新增 ECPay 本機測試：涵蓋官方簽章向量、竄改金額拒絕、staging AIO 表單、重複付款防護、驗簽入帳、403 暫停及節流；測試資料庫改用唯一暫存 SQLite 檔。
+
+### Changed
+
+- 付款狀態不再接受瀏覽器模擬結果；僅在後端驗簽並比對查詢回應後更新訂單。購物車、結帳、訂單與付款表單均使用保存的商品小計。
+- 同步更新 README、架構、開發規範、功能與測試文件；外部 ReturnURL 與真實測試卡驗收不屬本機作業範圍，計畫已依本機完成條件歸檔至 `docs/plans/archive/`。
+
+### Fixed
+
+- 移除購物車與結帳頁未入帳的運費摘要；首頁保留的「滿額免運」僅為待處理靜態文案。
+
+## [Documentation baseline] - 2026-09-11
+
+### Added
 
 逐一檢視第一方後端程式、所有瀏覽器腳本、EJS layout／partials／pages、CSS、全部測試、npm／OpenAPI／Vitest／環境設定與Git歷史後，建立以下文件與目錄：
 
@@ -24,13 +41,13 @@
 
 本次工作只新增文件與目錄，不修改業務程式、DB schema、套件版本、路由註解或既有本機 `.codex` 設定。範本需求中提及 CLAUDE.md 的結構已用於使用者指定的 AGENTS.md，沒有額外建立另一份重複入口。
 
-### 已記錄：既有整合限制
+### Changed
 
 以下是既有程式的檢視發現，不是本次新增的bug或已修復項目：
 
 - 訪客與會員購物車分開；JWT優先，無效Bearer不降級；登入沒有合併車。
 - 建單交易扣庫存、存商品快照、清會員車；失敗付款不回補，也不允許再次付款。
-- ECPay 測試付款目前以 `ChoosePayment=ALL` 顯示測試商店可用方式，並提供 AIO 表單、QueryTradeInfo/V5 簽章驗證、交易持久化與背景查詢；尚待本機無 Server Notify 的端到端驗收。
+- ECPay 本機付款以 `ChoosePayment=Credit` 限制信用卡，並提供 AIO 表單、QueryTradeInfo/V5 簽章驗證、交易持久化與背景查詢；ATM、超商、條碼與 BNPL 需要 Server Notify，未納入本機流程。
 - 購物車、結帳、訂單與綠界付款金額均為保存的商品小計，運費尚未實作；首頁仍保留「滿額免運」靜態文案，與目前功能不一致。月配、評論、配送文案沒有對應服務。
 - 商品刪除除pending訂單409外，還可能受cart_items外鍵阻擋而500。
 - JWT role取token、DB只查帳號存在；前端角色只是導覽；HTML路由沒有伺服器認證。
@@ -40,7 +57,7 @@
 
 具體重現條件與檔案來源見 FEATURES、ARCHITECTURE；未建立未獲安排的修復計畫，也未宣稱上述問題已解決。
 
-### 驗證
+**驗證紀錄（2026-09-11）**
 
 於Node 22.23.2／npm 11.2.0建立專案內獨立來源副本，使用全新SQLite、測試JWT_SECRET、NODE_ENV=test與預設admin帳密。npm依賴使用專案內cache成功安裝244 packages；原預設cache與指定外部cache曾遇Windows EPERM，未更動應用程式解決。
 
@@ -48,7 +65,7 @@
 
 `npm run css:build` 與 `npm run openapi` 在副本成功，生成OpenAPI的14個path、19個HTTP操作已核對。瀏覽器視覺與互動未作本次驗證。沒有在原專案資料庫執行測試，也沒有部署或發布。
 
-## 1.0.0 程式基線 — 2026-04-07
+## [1.0.0] - 2026-04-07
 
 ### 可查證歷史
 

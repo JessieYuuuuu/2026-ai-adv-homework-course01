@@ -58,8 +58,6 @@ function buildPaymentForm({ attempt, order, items, config }) {
     TradeDesc: 'Flower Life order',
     ItemName: attempt.item_name || cleanItemName(items),
     ReturnURL: 'http://localhost/ecpay/notify-unavailable',
-    // Show every payment method available to this staging merchant. Credit remains
-    // available for the required credit-card acceptance flow.
     ChoosePayment: 'ALL',
     ClientBackURL: `${process.env.BASE_URL || 'http://localhost:3001'}/orders/${order.id}`,
     EncryptType: '1'

@@ -4,9 +4,19 @@
 
 目前測試為 Vitest 2.1.9 + Supertest 7.2.2 的 API 整合測試。tests/setup.js 直接 require app，請求走真正 Express middleware、JWT、bcrypt、SQLite 與 seed，沒有 mock database 或第三方服務。Supertest 使用 app 建立測試所需 HTTP server，不需要先 `npm start` 或占用固定 3001。
 
-現有 7 份 `.test.js` 共 35 個 `it`。沒有 browser E2E、DOM 測試、視覺快照、獨立 middleware unit tests、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 行為，不能推定付款、跨 owner、交易 rollback 或所有輸入邊界已驗證。
+現有 8 份 `.test.js` 共 40 個 `it`：其中 6 份為 API 整合測試，另有 2 份 ECPay 簽章／表單與付款排程測試。沒有 browser E2E、DOM 測試、視覺快照、真實測試卡付款、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 行為，不能推定跨 owner、交易 rollback 或所有輸入邊界已驗證。
 
 ## 實測紀錄
+
+2026-09-13 在專案根目錄執行 `npm test`、`npm run css:build` 與 `npm run openapi`：
+
+| 檢查 | 結果 | 解讀 |
+| --- | --- | --- |
+| `npm test` | 8 檔、40 案例通過 | `tests/setup.js` 在載入 app 前設定唯一的系統暫存 `DATABASE_PATH`，不寫入專案根目錄的開發資料庫；付款測試以注入的 HTTP client 模擬綠界查詢回應。 |
+| `npm run css:build` | 通過 | Tailwind 產生已忽略 Git 的 `public/css/output.css`。 |
+| `npm run openapi` | 通過 | 重新產生 `openapi.json`，付款端點註解可成功解析。 |
+
+此驗證不呼叫綠界，也不測試 Server Notify 或真實測試卡付款；這些外部流程不屬本機作業的驗收範圍。
 
 2026-09-11 在獨立程式副本、全新 SQLite、Node 22.23.2／npm 11.2.0，設定測試 JWT 與預設管理員後執行：
 
@@ -30,6 +40,8 @@
 | `tests/orders.test.js` | 6 | 建單、空車、無認證、本人列表／詳情、404 | beforeAll註冊並加1件；首案例建單後，空車與詳情依賴結果 |
 | `tests/adminProducts.test.js` | 6 | 列表、新增、部分更新、刪除、會員403、無token401 | beforeAll取admin token；新增→更新→刪除共享createdProductId |
 | `tests/adminOrders.test.js` | 4 | 列表、pending篩選、詳情、會員403 | beforeAll登入admin並註冊會員、加1件、建立pending訂單 |
+| `tests/ecpayService.test.js` | 3 | 官方 SHA256 CheckMacValue 向量、竄改金額驗簽失敗、AIO staging 表單 | 不呼叫綠界；使用固定測試商店參數與本機物件 |
+| `tests/paymentScheduler.test.js` | 5 | AIO 表單、pending 唯一約束、已簽章成功入帳、金額不符、HTTP 403 暫停與 5 秒節流 | 建單後以可注入 `fetchImpl` 模擬 QueryTradeInfo/V5；不對外發出 HTTP 請求 |
 
 現有多數負向案例只斷言 error 非 null，而非精確機器碼；新增測試應同時斷言 status、error 及必要副作用，避免錯誤分支完全不同卻仍通過。
 
