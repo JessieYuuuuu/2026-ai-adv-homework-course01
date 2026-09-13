@@ -4,7 +4,7 @@
 
 目前測試為 Vitest 2.1.9 + Supertest 7.2.2 的 API 整合測試。tests/setup.js 直接 require app，請求走真正 Express middleware、JWT、bcrypt、SQLite 與 seed，沒有 mock database 或第三方服務。Supertest 使用 app 建立測試所需 HTTP server，不需要先 `npm start` 或占用固定 3001。
 
-現有 6 份 `.test.js` 共 32 個 `it`。沒有 browser E2E、DOM 測試、視覺快照、獨立 middleware unit tests、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 行為，不能推定付款、運費、跨 owner、交易 rollback 或所有輸入邊界已驗證。
+現有 7 份 `.test.js` 共 35 個 `it`。沒有 browser E2E、DOM 測試、視覺快照、獨立 middleware unit tests、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 行為，不能推定付款、跨 owner、交易 rollback 或所有輸入邊界已驗證。
 
 ## 實測紀錄
 

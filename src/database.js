@@ -66,6 +66,40 @@ function initializeDatabase() {
       quantity INTEGER NOT NULL,
       FOREIGN KEY (order_id) REFERENCES orders(id)
     );
+
+    CREATE TABLE IF NOT EXISTS payment_attempts (
+      id TEXT PRIMARY KEY,
+      order_id TEXT NOT NULL,
+      merchant_id TEXT NOT NULL,
+      environment TEXT NOT NULL CHECK(environment = 'staging'),
+      merchant_trade_no TEXT NOT NULL UNIQUE,
+      amount INTEGER NOT NULL CHECK(amount > 0),
+      item_name TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'paid', 'failed')),
+      trade_no TEXT,
+      payment_date TEXT,
+      trade_status TEXT,
+      last_queried_at TEXT,
+      next_query_at TEXT NOT NULL,
+      auto_query_until TEXT NOT NULL,
+      returned_at TEXT,
+      error_code TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (order_id) REFERENCES orders(id)
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_attempts_one_pending_per_order
+      ON payment_attempts(order_id) WHERE status = 'pending';
+    CREATE INDEX IF NOT EXISTS idx_payment_attempts_next_query
+      ON payment_attempts(status, next_query_at);
+
+    CREATE TABLE IF NOT EXISTS payment_scheduler_state (
+      id INTEGER PRIMARY KEY CHECK(id = 1),
+      paused_until TEXT,
+      last_outbound_at TEXT
+    );
+    INSERT OR IGNORE INTO payment_scheduler_state (id) VALUES (1);
   `);
 
   // Seed data

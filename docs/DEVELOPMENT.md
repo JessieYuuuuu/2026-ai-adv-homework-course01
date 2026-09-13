@@ -19,7 +19,7 @@
 | DB 欄位 | snake_case | `user_id`、`total_amount`、`created_at` |
 | API body | 保留既有混合契約 | cart `productId`、order `recipientName`，管理商品則是 `image_url` |
 | API 回傳 | 通常沿用 DB snake_case | `product_id`、`order_no`；分頁 `totalPages` 為 camelCase |
-| URL | 小寫複數資源 | `/api/products/:id`、`/api/cart/:itemId`；付款為 `/:id/pay` |
+| URL | 小寫複數資源 | `/api/products/:id`、`/api/cart/:itemId`；付款為 `/:id/payment`、`/:id/payment/verify`、`/:id/payment/returned` |
 | 頁面腳本 | kebab-case.js | `product-detail.js`、`admin-orders.js` |
 | EJS 模板 | kebab-case.ejs | `order-detail.ejs`；後台另放 pages/admin |
 | DOM id／data 屬性 | kebab-case | `cart-badge`、`data-order-id`，JS 用 dataset.orderId |

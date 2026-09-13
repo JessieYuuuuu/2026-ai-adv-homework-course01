@@ -18,7 +18,7 @@ flowchart LR
   Browser --> CDN[Vue CDN 字型與圖片]
 ```
 
-關鍵整合決策：會員與訪客購物車為不同 owner；歷史訂單儲存商品快照；庫存於建單扣除；付款只是資料庫狀態改變；管理 API 才是真正權限邊界；資料庫載入具有建表及 seed 副作用。這些行為會直接影響新增登入、刪除商品、退貨、運費與付款功能。
+關鍵整合決策：會員與訪客購物車為不同 owner；歷史訂單儲存商品快照；庫存於建單扣除；ECPay 付款僅由後端查詢與驗簽更新；管理 API 才是真正權限邊界；資料庫載入具有建表及 seed 副作用。這些行為會直接影響新增登入、刪除商品、退貨、運費與付款功能。
 
 ## 目錄與逐檔用途
 
@@ -64,7 +64,7 @@ flowchart LR
 | `src/routes/authRoutes.js` | 註冊、登入、個人資料；同步 bcrypt、JWT 簽發 |
 | `src/routes/productRoutes.js` | 公開商品分頁列表及詳情 |
 | `src/routes/cartRoutes.js` | 私有 dualAuth、owner SQL 選擇、查詢／累加／取代數量／刪除購物車項目 |
-| `src/routes/orderRoutes.js` | 會員建單交易、個人列表／詳情、訂單編號生成、模擬付款 |
+| `src/routes/orderRoutes.js` | 會員建單交易、個人列表／詳情、ECPay 付款表單與本人查詢 |
 | `src/routes/adminProductRoutes.js` | 管理員商品分頁、建立、部分更新與受限制的刪除 |
 | `src/routes/adminOrderRoutes.js` | 全站訂單分頁及狀態篩選、附買家資料的詳情 |
 | `src/routes/pageRoutes.js` | renderFront／renderAdmin 兩階段渲染、9 個頁面 GET，不執行伺服器身分檢查 |
@@ -148,7 +148,7 @@ flowchart LR
 | `/api/auth` | 同上 | JWT | GET `/profile` | 本人基本資料 |
 | `/api/products` | `src/routes/productRoutes.js` | 公開 | GET `/`、GET `/:id` | 商品分頁、詳情 |
 | `/api/cart` | `src/routes/cartRoutes.js` | 雙模式 | GET `/`、POST `/`、PATCH `/:itemId`、DELETE `/:itemId` | owner 隔離的購物車操作 |
-| `/api/orders` | `src/routes/orderRoutes.js` | router 全域 JWT | POST `/`、GET `/`、GET `/:id`、PATCH `/:id/pay` | 本人建單／查詢／模擬付款 |
+| `/api/orders` | `src/routes/orderRoutes.js` | router 全域 JWT | POST `/`、GET `/`、GET `/:id`、POST `/:id/payment`、POST `/:id/payment/verify`、POST `/:id/payment/returned` | 本人建單／查詢／付款、驗證與付款頁返回查詢 |
 | `/api/admin/products` | `src/routes/adminProductRoutes.js` | router 全域 Admin | GET `/`、POST `/`、PUT `/:id`、DELETE `/:id` | 全站商品管理；PUT 實際允許部分更新 |
 | `/api/admin/orders` | `src/routes/adminOrderRoutes.js` | router 全域 Admin | GET `/`、GET `/:id` | 全站訂單查詢，沒有修改狀態端點 |
 
@@ -162,7 +162,7 @@ flowchart LR
 | `/checkout` | checkout／checkout | title |
 | `/login` | login／login | title |
 | `/orders` | orders／orders | title |
-| `/orders/:id` | order-detail／order-detail | title、orderId、paymentResult=`query.payment || ''` |
+| `/orders/:id` | order-detail／order-detail | title、orderId |
 | `/admin/products` | admin/products／admin-products | title、currentPath |
 | `/admin/orders` | admin/orders／admin-orders | title、currentPath |
 
@@ -270,7 +270,7 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 | recipient_email | TEXT | NN | 收件 email 快照 |
 | recipient_address | TEXT | NN | 收件地址快照 |
 | total_amount | INTEGER | NN，無正數 CHECK | 商品單價乘數量總和，不含運費 |
-| status | TEXT | NN、default 'pending'、CHECK pending/paid/failed | 付款模擬狀態 |
+| status | TEXT | NN、default 'pending'、CHECK pending/paid/failed | 訂單付款狀態，僅由驗證過的綠界查詢結果更新 |
 | created_at | TEXT | NN、default datetime('now') | 建立時間與排序 |
 
 ### order_items
@@ -300,8 +300,8 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 
 ## 付款與第三方整合
 
-現行付款流程：本人登入 → GET 訂單詳情 → pending 顯示兩顆模擬按鈕 → PATCH `/:id/pay` 傳 `action:'success'` 或 `'fail'` → 更新為 paid 或 failed → 回傳完整訂單／明細 → Vue 更新提示並隱藏按鈕。沒有請求第三方、導向收單頁、簽章、webhook、對帳或實際款項移轉。
+現行付款流程：本人登入 → POST `/:id/payment` 建立唯一待確認交易並取得 AIO 表單欄位（`ChoosePayment=ALL`）→ 瀏覽器同頁 POST 至綠界測試付款頁 → 使用者可選信用卡或測試商店提供的網路 ATM 等方式，並經 ClientBackURL 回到訂單頁 → 後端於付款後 10 分鐘主動查詢並驗證 CheckMacValue、MerchantID、MerchantTradeNo 與金額 → 才更新為 paid 或已確認 failed。背景排程每 30 秒掃描到期資料，但單一交易至少間隔 10 分鐘，403 會持久暫停 30 分鐘。
 
-失敗付款不回補庫存、不重開購物車，也沒有 failed → pending／paid 的轉移。頁面 `?payment=success|failed|cancel` 僅提供提示，不能改資料庫；cancel 只是文案，沒有取消端點或 schema 狀態。`.env.example` 的 ECPAY_* 只是預留範例，不能藉設定變數啟用真金流。
+失敗付款不回補庫存、不重開購物車；只有綠界回傳 `TradeStatus=10200095` 的已驗證失敗可建立新交易。瀏覽器 query／返回網址不改資料庫。僅支援 ECPay staging，尚未完成無 Server Notify 的真實端到端驗收。
 
 真正外部整合限瀏覽器載入 Vue（unpkg）、Google Fonts 與 Unsplash 圖片。後端不代理圖片、不儲存上傳、不驗證圖片 URL 內容；新增商品只存 image_url。網站的品牌好評、配送與月配文案不代表有評論、物流或訂閱服務。

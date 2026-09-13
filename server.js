@@ -1,4 +1,5 @@
 const app = require('./app');
+const { startPaymentScheduler } = require('./src/services/paymentScheduler');
 
 const PORT = process.env.PORT || 3001;
 
@@ -9,6 +10,7 @@ if (require.main === module) {
   }
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    startPaymentScheduler();
   });
 }
 

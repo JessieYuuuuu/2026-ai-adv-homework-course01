@@ -58,20 +58,10 @@
             <span class="text-text-primary">NT$ {{ (item.product.price * item.quantity).toLocaleString() }}</span>
           </div>
         </div>
-        <div class="border-t border-gray-100 pt-3 space-y-2 text-sm">
-          <div class="flex justify-between">
-            <span class="text-text-secondary">商品小計</span>
-            <span>NT$ {{ cartTotal.toLocaleString() }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-text-secondary">運費</span>
-            <span>{{ cartTotal >= 500 ? '免運' : 'NT$ 150' }}</span>
-          </div>
-        </div>
-        <div class="border-t border-gray-100 pt-3 mt-3 flex justify-between items-center">
+        <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
           <span class="font-bold text-text-primary">總計</span>
           <span class="font-bold text-xl text-rose-primary">
-            NT$ {{ (cartTotal + (cartTotal >= 500 ? 0 : 150)).toLocaleString() }}
+            NT$ {{ cartTotal.toLocaleString() }}
           </span>
         </div>
         <button

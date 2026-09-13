@@ -50,8 +50,7 @@ router.get('/orders/:id', function (req, res) {
   renderFront(res, 'order-detail', {
     title: '訂單詳情',
     pageScript: 'order-detail',
-    orderId: req.params.id,
-    paymentResult: req.query.payment || ''
+    orderId: req.params.id
   });
 });
 

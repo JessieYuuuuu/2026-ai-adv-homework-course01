@@ -1,4 +1,4 @@
-<div id="app" data-order-id="<%= orderId %>" data-payment-result="<%= paymentResult %>">
+<div id="app" data-order-id="<%= orderId %>">
   <h1 class="text-2xl font-bold text-text-primary mb-6" style="font-family: 'Noto Serif TC', serif;">訂單詳情</h1>
 
   <div v-if="loading" class="flex justify-center py-12">
@@ -6,15 +6,6 @@
   </div>
 
   <template v-else-if="order">
-    <!-- Payment Result Alert -->
-    <div
-      v-if="paymentResult && paymentMessages[paymentResult]"
-      class="rounded-xl p-4 mb-6 text-sm"
-      :class="paymentMessages[paymentResult].cls"
-    >
-      {{ paymentMessages[paymentResult].text }}
-    </div>
-
     <!-- Order Info -->
     <div class="bg-white rounded-2xl shadow-sm p-6 mb-6">
       <div class="flex items-start justify-between">
@@ -70,21 +61,30 @@
       </table>
     </div>
 
-    <!-- Payment Buttons -->
-    <div v-if="order.status === 'pending'" class="flex gap-4">
+    <div v-if="order.payment" class="bg-white rounded-2xl shadow-sm p-6 mb-6 text-sm text-text-secondary">
+      <h2 class="font-medium text-text-primary mb-2">付款資訊</h2>
+      <p v-if="order.payment.status === 'pending'">付款狀態確認中，請稍候。</p>
+      <p v-else-if="order.payment.status === 'paid'">付款成功，感謝您的購買。</p>
+      <p v-else>付款未完成，您可以重新付款。</p>
+    </div>
+
+    <!-- Payment controls -->
+    <div v-if="order.status === 'pending' || order.status === 'failed'" class="flex flex-wrap gap-4">
       <button
-        @click="handlePaySuccess"
+        v-if="!order.payment || order.payment.status === 'failed'"
+        @click="startPayment"
         :disabled="paying"
-        class="bg-sage text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-sage/90 transition-colors disabled:opacity-50"
+        class="bg-rose-primary text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-rose-primary/90 transition-colors disabled:opacity-50"
       >
-        {{ paying ? '處理中...' : '付款成功' }}
+        {{ paying ? '處理中...' : (order.status === 'failed' ? '重新付款' : '前往付款') }}
       </button>
       <button
-        @click="handlePayFail"
-        :disabled="paying"
-        class="bg-red-500 text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+        v-if="order.payment && order.payment.status === 'pending'"
+        @click="verifyPayment"
+        :disabled="paying || !order.payment.canVerify"
+        class="bg-sage text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-sage/90 transition-colors disabled:opacity-50"
       >
-        {{ paying ? '處理中...' : '付款失敗' }}
+        {{ paying ? '更新中...' : '更新付款狀態' }}
       </button>
     </div>
   </template>

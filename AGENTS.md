@@ -2,7 +2,7 @@
 
 ## 專案概述
 
-花漾生活 Flower Life（npm 套件名稱 `backend-project`，版本 `1.0.0`）是花卉電商教學專案。Node.js／Express 提供 REST API 與 EJS 頁面，瀏覽器使用 CDN Vue 3，Tailwind CSS 4 負責樣式；better-sqlite3 直接存取根目錄 `database.sqlite`。目前包含商品、帳號、雙模式購物車、訂單、模擬付款及管理後台。
+花漾生活 Flower Life（npm 套件名稱 `backend-project`，版本 `1.0.0`）是花卉電商教學專案。Node.js／Express 提供 REST API 與 EJS 頁面，瀏覽器使用 CDN Vue 3，Tailwind CSS 4 負責樣式；better-sqlite3 直接存取根目錄 `database.sqlite`。目前包含商品、帳號、雙模式購物車、訂單、ECPay 測試付款方式及管理後台。
 
 後端採 CommonJS，沒有 controller/service/ORM 分層；SQL 與業務邏輯位於 `src/routes/*Routes.js`。頁面由 EJS 產生外框，再由 `public/js/pages/*.js` 呼叫 API。閱讀或修改模組時，必須同時檢查對應路由、頁面腳本、模板和測試。
 
@@ -26,7 +26,7 @@
 
 - 保持 API `{ data, error, message }` 回應、現有 camelCase 請求／snake_case 資料欄位，以及 CommonJS 模組契約；修改端點同步更新 `@openapi` 註解與相關前端。
 - 認證與資料隔離必須由伺服器保障。管理 API 先經 `authMiddleware` 再經 `adminMiddleware`；一般使用者訂單與購物車 SQL 必須限制 owner。前端 localStorage 的角色判斷只控制導覽。
-- 保留購物車 JWT 優先規則：Bearer 無效即 401，不降級訪客；登入不合併訪客車。庫存於建立訂單交易內扣除，失敗付款不回補，付款僅模擬。改動這些契約需同步檢查整個購買流程。
+- 保留購物車 JWT 優先規則：Bearer 無效即 401，不降級訪客；登入不合併訪客車。庫存於建立訂單交易內扣除，付款失敗不回補。ECPay 付款只接受後端查詢驗簽結果，不能信任瀏覽器 query 或 body。改動這些契約需同步檢查整個購買流程。
 - 資料表以 `CREATE TABLE IF NOT EXISTS` 初始化，沒有 migration；變更 schema 必須交代既有資料升級與外鍵處理。不得把 `.env`、SQLite 資料或產生的 CSS 當成原始碼提交；不要覆寫現有本機 `.codex/` 設定。
 - 功能開發使用 `docs/plans/` 記錄 `User Story → Spec → Tasks`，檔名 `YYYY-MM-DD-<feature-name>.md`；完成並記錄驗證後移至 `docs/plans/archive/`，同步更新功能狀態與更新日誌。
 
