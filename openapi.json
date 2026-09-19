@@ -1145,6 +1145,27 @@
         }
       }
     },
+    "/api/ecpay/notify": {
+      "post": {
+        "summary": "本機 ECPay ReturnURL 占位回覆",
+        "tags": [
+          "Orders"
+        ],
+        "responses": {
+          "200": {
+            "description": "固定回覆 1|OK；不驗簽或更新訂單",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "1|OK"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/orders": {
       "post": {
         "summary": "從購物車建立訂單",

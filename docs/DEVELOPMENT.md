@@ -30,11 +30,11 @@
 
 現有程式大多兩空白縮排、單引號、分號，字串插值或多行 SQL 用 template literal。新程式採 const 優先，確需重新賦值才 let；瀏覽器既有 var 可保留，不必為文件或單一功能全面格式重寫。中文檔案用 UTF-8，PowerShell 讀檔時明確加 `-Encoding UTF8`，避免將終端亂碼誤判為檔案損壞。
 
-## 模組系統與載入顺序
+## 模組系統與載入順序
 
 package.json 沒有 `type:module`。app、server、src、工具腳本與 tests 使用 `require`／`module.exports`；不要直接在其中加入 ESM import/export，或為單檔修改整個 package type。vitest.config.js 是唯一現有 ESM 語法設定，經 Vitest/Vite 載入，不能據此認為後端全面 ESM。
 
-瀏覽器檔案是普通 `<script>`，不是 `type=module`。layout 先载 Vue global，再 auth.js、api.js、notification.js，前台再 header-init.js，最後单一 pageScript。頁面頂層會解構 Vue 的 createApp/ref 等名稱，故每頁只應載入自己的腳本，不能一次載入多個 pages/*.js，否則可能重複宣告 const 且多次 mount。
+瀏覽器檔案是普通 `<script>`，不是 `type=module`。layout 先載 Vue global，再 auth.js、api.js、notification.js，前台再 header-init.js，最後單一 pageScript。頁面頂層會解構 Vue 的 createApp/ref 等名稱，故每頁只應載入自己的腳本，不能一次載入多個 pages/*.js，否則可能重複宣告 const 且多次 mount。
 
 database.js 首次 require 就初始化並 seed，CommonJS cache 在同程序共享 connection。請勿在測試中假設重新 require 一次就得到乾淨 DB，也勿在其他測試仍使用時關閉這個 connection。Express 4 的同步拋錯可進 errorHandler；新增 async handler 時要自行 try/catch 並 `next(err)`，不要依賴 Express 5 的 Promise 行為。
 
@@ -51,13 +51,13 @@ dotenv 在 app.js 開頭載入；已存在程序環境值預設不被 `.env` 覆
 | ADMIN_PASSWORD | database.js 新管理員 hash | 選填 | `12345678`；不修改已存在帳號 |
 | NODE_ENV | database.js seed bcrypt cost；框架／測試環境 | 選填 | 專案不設定預設；恰為 test 時 seed cost=1，其他為10；註冊仍固定10 |
 | DATABASE_PATH | `src/database.js` 的 SQLite 檔案位置 | 僅測試使用 | 未設定時仍為根目錄 `database.sqlite`；`tests/setup.js` 在載入 app 前指定唯一暫存檔，避免測試污染開發資料庫 |
-| BASE_URL | `src/services/ecpayService.js` 的 ClientBackURL | ECPay 付款時必要 | 未設定時使用 `http://localhost:3001`；必須是綠界能讓瀏覽器返回的實際位址 |
+| BASE_URL | `src/services/ecpayService.js` 的 ClientBackURL／ReturnURL | ECPay 付款時必要 | 未設定時使用 `http://localhost:3001`；本機 ReturnURL 只提供占位路由，綠界無法連入 localhost |
 | ECPAY_MERCHANT_ID | ECPay 商店識別 | ECPay 付款時必要 | 缺少時 `POST /payment` 回 503 PAYMENT_NOT_CONFIGURED |
 | ECPAY_HASH_KEY | 產生與驗證 CheckMacValue | ECPay 付款時必要 | 僅留在後端環境；不得交給瀏覽器或寫入日誌 |
 | ECPAY_HASH_IV | 產生與驗證 CheckMacValue | ECPay 付款時必要 | 僅留在後端環境；不得交給瀏覽器或寫入日誌 |
 | ECPAY_ENV | 限制 ECPay 執行環境 | ECPay 付款時必要 | 必須精確為 `staging`，其他值明確拒絕，避免誤連正式環境 |
 
-沒有 DATABASE_URL／DB_PATH；設定這些變數不会切換資料庫。所有執行環境都由 src/database.js 定位同一根目錄 database.sqlite。測試 helper 使用固定管理員帳密，與自訂 ADMIN_* 可能不相容。變更 JWT_SECRET 会使以舊 secret 簽出的 JWT 驗證失敗，但登出只刪本機資料。
+沒有 DATABASE_URL／DB_PATH；設定這些變數不會切換資料庫。所有執行環境都由 src/database.js 定位同一根目錄 database.sqlite。測試 helper 使用固定管理員帳密，與自訂 ADMIN_* 可能不相容。變更 JWT_SECRET 會使以舊 secret 簽出的 JWT 驗證失敗，但登出只刪本機資料。
 
 新增變數時：先定義實際讀取位置、是否必填與缺值失敗方式；更新 `.env.example`、本表和快速開始；測試用臨時值覆蓋；不得提交本機 `.env`。第三方設定必須有對應程式與驗證，不能只新增變數就標記整合完成。
 
@@ -66,7 +66,7 @@ dotenv 在 app.js 開頭載入；已存在程序環境值預設不被 `.env` 覆
 1. 在 docs/plans 建立計畫，列 User Story、可觀察 Spec、Tasks。先定 owner、角色、body 欄位、錯誤碼、回應形狀和是否改 DB。
 2. 在既有適當 router 新增路徑，或建立 `src/routes/<resource>Routes.js`，以 express.Router、module.exports 匯出；新 router 需在 app.js 的 pageRoutes／404 之前掛載。
 3. 判斷認證模式：公開商品不強加 JWT；會員資源用 authMiddleware；後台先 auth 再 admin；雙模式目前私有在 cartRoutes，不要誤以為已可直接 import。
-4. 執行 body／path／query 驗證，對新欄位明确檢查型別再使用 trim、數學或 bcrypt。數值是否接受數字字串需寫進 Spec；不要無意複製 parseInt 的截斷行為。
+4. 執行 body／path／query 驗證，對新欄位明確檢查型別再使用 trim、數學或 bcrypt。數值是否接受數字字串需寫進 Spec；不要無意複製 parseInt 的截斷行為。
 5. SQL 值一律 placeholder。owner 欄位如需插值，只能從固定白名單選擇，不能把 query 欄位名直接插入 SQL。一般會員查訂單／cart 時同時限制 id 和 owner。
 6. 若多表狀態要一起成功，以 db.transaction 處理，明確區分交易外讀取與交易內寫入。不要在同步 transaction callback 內 await 網路；金流呼叫與本機交易需另外設計狀態流程。
 7. 成功／錯誤回 `{data,error,message}`，遵循既有 201／200／400／401／403／404／409。可預期業務錯誤直接回適當機器碼；未預期錯誤交集中 handler，不洩 SQL／堆疊。
@@ -106,7 +106,7 @@ module.exports = router;
 2. 修改 database.js 的初始化 SQL，使全新資料庫建立正確；既有 `CREATE TABLE IF NOT EXISTS` 不會替已有表補欄位，另提供可重複執行的版本升級策略與資料回填計畫。
 3. 處理現有資料與外鍵。例如改 products 刪除行為必須考慮 cart_items FK 與 order_items 無商品 FK；不要直接關 foreign_keys 來掩蓋不一致。
 4. 檢查所有 SELECT * 回應是否無意暴露新欄位；新增敏感欄位應明確 projection。檢查前台 body 命名與 schema 映射，不要全面改名破壞客戶端。
-5. 在乾淨 DB 與含舊資料 DB 分別驗證，確認 upgrade／seed 重跑不会重複或覆蓋使用者資料；用交易處理多步寫入。
+5. 在乾淨 DB 與含舊資料 DB 分別驗證，確認 upgrade／seed 重跑不會重複或覆蓋使用者資料；用交易處理多步寫入。
 6. 更新 ARCHITECTURE 每欄表格、相關功能、測試 fixtures 與計畫的升級／回復說明。
 
 目前沒有 `npm run migrate`，文件不可提供虛構指令。資料庫重設只適用可丟棄副本，正式或個人資料應先保留；WAL 模式備份不能隨意在寫入中只複製主檔並忽略尚未 checkpoint 的變更。
@@ -119,7 +119,7 @@ module.exports = router;
 
 樣式 token 放 public/css/input.css 的 @theme，避免修改 output.css；每次更動模板 class 後執行 css:build。Tailwind 需要可掃描的完整 class 字串，動態組合新 class 時檢查產物。legacy public/stylesheets/style.css 未被 head 載入，修改它不會改現有畫面。
 
-使用 Vue 插值或 textContent 顯示使用者字串；header-init 現況以 innerHTML 拼姓名，沒有跳脫，這是已知風險而非建議模式。新增登入 redirect 应先限制站內路徑；目前 login.js 未驗證 redirect。這兩點如修復需另列功能／安全變更，而非在文件工作中默默改業務程式。
+使用 Vue 插值或 textContent 顯示使用者字串；header-init 現況以 innerHTML 拼姓名，沒有跳脫，這是已知風險而非建議模式。新增登入 redirect 應先限制站內路徑；目前 login.js 未驗證 redirect。這兩點如修復需另列功能／安全變更，而非在文件工作中默默改業務程式。
 
 ## JSDoc 與 OpenAPI 註解
 
@@ -221,7 +221,7 @@ Move-Item -LiteralPath 'docs/plans/2026-09-11-shipping-total.md' `
   -Destination 'docs/plans/archive/2026-09-11-shipping-total.md'
 ```
 
-更新 FEATURES 將實際完成部分改狀態并記行为；CHANGELOG 加日期、影響與驗證，連結已歸檔計畫。如重開舊功能，建立新計畫引用舊案，不覆寫歷史結果。兩目錄中的 .gitkeep 僅維持 Git 追蹤，不需移動或當成計畫。
+更新 FEATURES 將實際完成部分改狀態並記行為；CHANGELOG 加日期、影響與驗證，連結已歸檔計畫。如重開舊功能，建立新計畫引用舊案，不覆寫歷史結果。兩目錄中的 .gitkeep 僅維持 Git 追蹤，不需移動或當成計畫。
 
 ## 交付前檢查
 

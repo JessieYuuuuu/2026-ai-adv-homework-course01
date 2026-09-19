@@ -65,6 +65,7 @@ flowchart LR
 | `src/routes/productRoutes.js` | 公開商品分頁列表及詳情 |
 | `src/routes/cartRoutes.js` | 私有 dualAuth、owner SQL 選擇、查詢／累加／取代數量／刪除購物車項目 |
 | `src/routes/orderRoutes.js` | 會員建單交易、個人列表／詳情、ECPay 付款表單與本人查詢 |
+| `src/routes/ecpayRoutes.js` | 本機 ReturnURL 占位路由；回覆純文字 `1|OK`，不驗簽或更新訂單 |
 | `src/services/ecpayService.js` | 僅限 staging 的設定檢查、CheckMacValue 建立／驗證、AIO 表單與 QueryTradeInfo/V5 請求 |
 | `src/services/paymentScheduler.js` | 付款查詢節流、403 暫停、結果驗證、訂單狀態更新與 30 秒背景掃描 |
 | `src/routes/adminProductRoutes.js` | 管理員商品分頁、建立、部分更新與受限制的刪除 |
@@ -84,7 +85,7 @@ flowchart LR
 | `public/js/pages/cart.js` | 載入 items、computed 小計、數量變更、刪除確認及結帳導頁 |
 | `public/js/pages/checkout.js` | requireAuth、收件欄位驗證、空車回購物車、防重複提交及建單導頁 |
 | `public/js/pages/login.js` | 登入／註冊 tabs、表單驗證、存 token／user、讀 redirect 導頁 |
-| `public/js/pages/orders.js` | requireAuth、載入个人訂單、狀態文案、失敗時顯示空列表 |
+| `public/js/pages/orders.js` | requireAuth、載入個人訂單、狀態文案、失敗時顯示空列表 |
 | `public/js/pages/order-detail.js` | 讀訂單與付款摘要、建立 AIO 表單並導轉、付款頁返回後查詢，以及手動查詢狀態 |
 | `public/js/pages/admin-products.js` | limit=10 列表、新增／編輯 modal、刪除確認與重載當頁 |
 | `public/js/pages/admin-orders.js` | limit=10 列表、watch statusFilter 後回第一頁、詳情 modal |
@@ -108,7 +109,7 @@ flowchart LR
 | `views/pages/cart.ejs` | 空車、項目、數量控制、刪除 modal 與商品小計摘要 |
 | `views/pages/checkout.ejs` | 收件欄位、錯誤提示、商品小計摘要與送出狀態 |
 | `views/pages/login.ejs` | 登入／註冊雙表單、欄位錯誤、送出禁用 |
-| `views/pages/orders.ejs` | 个人訂單卡片、日期、總額、狀態與詳情連結 |
+| `views/pages/orders.ejs` | 個人訂單卡片、日期、總額、狀態與詳情連結 |
 | `views/pages/order-detail.ejs` | data-order-id、訂單快照、收件資料、付款狀態與付款／查詢按鈕 |
 | `views/pages/admin/products.ejs` | 商品表格、分頁、編輯 modal、v-model.number 數值欄位、刪除 modal |
 | `views/pages/admin/orders.ejs` | 狀態下拉、訂單表格、分頁、買家／收件人／明細 modal |
@@ -125,7 +126,7 @@ flowchart LR
 | `tests/orders.test.js` | 6 案例：建單、空車、無認證、列表、詳情、不存在 |
 | `tests/adminProducts.test.js` | 6 案例：列表、建立、更新、刪除、普通會員／無 token 拒絕 |
 | `tests/adminOrders.test.js` | 4 案例：列表、pending 篩選、詳情、普通會員拒絕 |
-| `tests/ecpayService.test.js` | 3 案例：官方 CheckMacValue 向量、竄改金額拒絕、staging AIO 表單欄位 |
+| `tests/ecpayService.test.js` | 4 案例：官方 CheckMacValue 向量、竄改金額拒絕、staging AIO 表單欄位、本機通知路由 |
 | `tests/paymentScheduler.test.js` | 5 案例：建立付款表單、重複付款拒絕、驗簽入帳、金額不符、403 暫停與對外節流 |
 
 ## 啟動與請求生命週期
@@ -153,10 +154,11 @@ flowchart LR
 | `/api/products` | `src/routes/productRoutes.js` | 公開 | GET `/`、GET `/:id` | 商品分頁、詳情 |
 | `/api/cart` | `src/routes/cartRoutes.js` | 雙模式 | GET `/`、POST `/`、PATCH `/:itemId`、DELETE `/:itemId` | owner 隔離的購物車操作 |
 | `/api/orders` | `src/routes/orderRoutes.js` | router 全域 JWT | POST `/`、GET `/`、GET `/:id`、POST `/:id/payment`、POST `/:id/payment/verify`、POST `/:id/payment/returned` | 本人建單／查詢／付款、驗證與付款頁返回查詢 |
+| `/api/ecpay` | `src/routes/ecpayRoutes.js` | 無 JWT；只作本機占位 | POST `/notify` | 回覆純文字 `1|OK`，不處理通知內容 |
 | `/api/admin/products` | `src/routes/adminProductRoutes.js` | router 全域 Admin | GET `/`、POST `/`、PUT `/:id`、DELETE `/:id` | 全站商品管理；PUT 實際允許部分更新 |
 | `/api/admin/orders` | `src/routes/adminOrderRoutes.js` | router 全域 Admin | GET `/`、GET `/:id` | 全站訂單查詢，沒有修改狀態端點 |
 
-合計 21 個 method/path 操作、16 個 OpenAPI path 模板；頁面路由不在 OpenAPI 中。欄位、查詢與所有業務錯誤見 [FEATURES.md](./FEATURES.md)。
+合計 22 個 method/path 操作、17 個 OpenAPI path 模板；頁面路由不在 OpenAPI 中。欄位、查詢與所有業務錯誤見 [FEATURES.md](./FEATURES.md)。
 
 | 頁面 GET | 模板名稱／pageScript | 伺服器傳入 locals |
 | --- | --- | --- |
@@ -205,7 +207,7 @@ HTML 渲染 helper 的 callback 若失敗會直接 `status(500).send(err.message
 
 authMiddleware 僅接受大小寫相符的 `Authorization: Bearer <token>` 前綴，取 split 空白後第二段；verify 限定 `algorithms:['HS256']`，使用 JWT_SECRET。驗簽後再 SELECT users.id，帳號不存在回 401；成功將 token 的 userId、email、role 放入 req.user。資料庫只檢查存在，不重新取得角色，因此改 DB role 不會立即改變已發 token 的授權。adminMiddleware 檢查 token role 為 admin，未通過回 403。
 
-Auth.requireAuth／requireAdmin 只讀 localStorage，沒有本機验签、過期檢查或 profile 請求。它們是 UI guard，不能替代 API middleware。後台 layout 到 DOMContentLoaded 才執行 guard，頁面 JS 已載入，因此不能假設未登入者完全不會發出後台 API 請求。
+Auth.requireAuth／requireAdmin 只讀 localStorage，沒有本機驗簽、過期檢查或 profile 請求。它們是 UI guard，不能替代 API middleware。後台 layout 到 DOMContentLoaded 才執行 guard，頁面 JS 已載入，因此不能假設未登入者完全不會發出後台 API 請求。
 
 ### 購物車雙模式
 
@@ -215,7 +217,7 @@ Auth.requireAuth／requireAdmin 只讀 localStorage，沒有本機验签、過�
 4. 沒有 Bearer 前綴時，非空 req.sessionId 可通過。非 Bearer 的 Authorization 並不會觸發 JWT 分支，因此搭配有效 session header 仍走訪客。
 5. 兩種身分皆無則 401。getOwnerCondition 只產生固定 `user_id` 或 `session_id` 欄位名，owner 值使用 SQL placeholder。
 
-訪客識別是持有值即可存取相同車的机制，沒有其他身分驗證。登入／註冊不搬移 session_id 資料，登出保留 session key，因此原訪客車可再次出現。
+訪客識別是持有值即可存取相同車的機制，沒有其他身分驗證。登入／註冊不搬移 session_id 資料，登出保留 session key，因此原訪客車可再次出現。
 
 ### apiFetch 契約
 
@@ -325,8 +327,8 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 
 ## 付款與第三方整合
 
-現行付款流程：本人登入 → POST `/:id/payment` 建立唯一待確認交易並取得 AIO 表單欄位（`ChoosePayment=Credit`）→ 瀏覽器同頁 POST 至綠界測試信用卡付款頁，並經 ClientBackURL 回到訂單頁 → 後端於付款後 10 分鐘主動查詢並驗證 CheckMacValue、MerchantID、MerchantTradeNo 與金額 → 才更新為 paid 或已確認 failed。背景排程每 30 秒掃描到期資料，但單一交易至少間隔 10 分鐘，403 會持久暫停 30 分鐘。ATM、超商、條碼與 BNPL 屬離線付款，官方要求等待通知，因此不納入無 Server Notify 的本機流程。
+現行付款流程：本人登入 → POST `/:id/payment` 建立唯一待確認交易並取得 AIO 表單欄位（`ChoosePayment=ALL`）→ 瀏覽器同頁 POST 至綠界測試付款頁，並經 ClientBackURL 回到訂單頁 → 後端於付款後 10 分鐘主動查詢並驗證 CheckMacValue、MerchantID、MerchantTradeNo 與金額 → 才更新為 paid 或已確認 failed。背景排程每 30 秒掃描到期資料，但單一交易至少間隔 10 分鐘，403 會持久暫停 30 分鐘。表單顯示所有付款方式；ATM、超商、條碼與 BNPL 等離線方式未完成本機端到端驗收。
 
-失敗付款不回補庫存、不重開購物車；只有綠界回傳 `TradeStatus=10200095` 的已驗證失敗可建立新交易。瀏覽器 query／返回網址不改資料庫。僅支援 ECPay staging，尚未完成無 Server Notify 的真實端到端驗收。
+失敗付款不回補庫存、不重開購物車；只有綠界回傳 `TradeStatus=10200095` 的已驗證失敗可建立新交易。瀏覽器 query／返回網址不改資料庫。本機 `POST /api/ecpay/notify` 直接回覆 `1|OK`，不驗簽或更新訂單；付款狀態仍只由後端主動查詢更新。僅支援 ECPay staging，尚未完成真實端到端驗收。
 
 真正外部整合限瀏覽器載入 Vue（unpkg）、Google Fonts 與 Unsplash 圖片。後端不代理圖片、不儲存上傳、不驗證圖片 URL 內容；新增商品只存 image_url。網站的品牌好評、配送與月配文案不代表有評論、物流或訂閱服務。

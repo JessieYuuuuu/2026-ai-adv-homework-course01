@@ -10,17 +10,20 @@
 
 ### Added
 
-- 2026-09-13 新增 ECPay staging 信用卡付款流程：建立 AIO `ChoosePayment=Credit` 表單、保存 `payment_attempts` 與排程狀態、以 QueryTradeInfo/V5 查詢並驗證 CheckMacValue、商店編號、交易編號與訂單金額。
+- 2026-09-17 新增本機 `POST /api/ecpay/notify` 占位路由，回覆純文字 `1|OK`；通知內容不參與付款狀態更新。實作與限制見 [計畫紀錄](./plans/archive/2026-09-17-ecpay-feedback-alignment.md)。
+- 2026-09-13 新增 ECPay staging 付款流程：建立 AIO 表單、保存 `payment_attempts` 與排程狀態、以 QueryTradeInfo/V5 查詢並驗證 CheckMacValue、商店編號、交易編號與訂單金額。
 - 新增本人付款建立、到期手動查詢與付款頁返回查詢端點；背景排程每 30 秒掃描到期交易，單筆查詢維持 10 分鐘間隔，HTTP 403 會保存 30 分鐘全域暫停。
 - 新增 ECPay 本機測試：涵蓋官方簽章向量、竄改金額拒絕、staging AIO 表單、重複付款防護、驗簽入帳、403 暫停及節流；測試資料庫改用唯一暫存 SQLite 檔。
 
 ### Changed
 
+- 2026-09-17 將文件與測試對齊表單實際送出的 `ChoosePayment=ALL`，並將 ReturnURL 指向本機占位路由；付款結果仍由後端查詢驗簽確認。統一 `docs/` 的繁體字用法。
 - 付款狀態不再接受瀏覽器模擬結果；僅在後端驗簽並比對查詢回應後更新訂單。購物車、結帳、訂單與付款表單均使用保存的商品小計。
 - 同步更新 README、架構、開發規範、功能與測試文件；外部 ReturnURL 與真實測試卡驗收不屬本機作業範圍，計畫已依本機完成條件歸檔至 `docs/plans/archive/`。
 
 ### Fixed
 
+- 2026-09-17 修正 ReturnURL 死路徑及付款表單測試預期與實作不一致；`npm test` 通過 8 檔、41 案例，`npm run openapi` 產生 17 個 path、22 個 method 操作。
 - 移除購物車與結帳頁未入帳的運費摘要；首頁保留的「滿額免運」僅為待處理靜態文案。
 
 ## [Documentation baseline] - 2026-09-11
@@ -32,7 +35,7 @@
 | 文件／目錄 | 新增內容與用途 |
 | --- | --- |
 | `AGENTS.md` | 專案定位、真實npm指令、跨模組關鍵規則、@docs引用 |
-| `docs/README.md` | 技術版本、PowerShell／shell快速開始、種子資料、指令与文件索引 |
+| `docs/README.md` | 技術版本、PowerShell／shell快速開始、種子資料、指令與文件索引 |
 | `docs/ARCHITECTURE.md` | 逐檔用途、啟動順序、19個API操作、14個path、schema全部欄位、JWT／session及交易資料流 |
 | `docs/DEVELOPMENT.md` | 現況與新規範區別、命名、模組系統、環境變數、API／middleware／DB／頁面擴充、JSDoc及歸檔流程 |
 | `docs/FEATURES.md` | 各功能行為、body必填選填、分頁預設、精確狀態／錯誤與已知未完成整合 |
@@ -47,7 +50,7 @@
 
 - 訪客與會員購物車分開；JWT優先，無效Bearer不降級；登入沒有合併車。
 - 建單交易扣庫存、存商品快照、清會員車；失敗付款不回補，也不允許再次付款。
-- ECPay 本機付款以 `ChoosePayment=Credit` 限制信用卡，並提供 AIO 表單、QueryTradeInfo/V5 簽章驗證、交易持久化與背景查詢；ATM、超商、條碼與 BNPL 需要 Server Notify，未納入本機流程。
+- ECPay 本機付款提供 AIO 表單、QueryTradeInfo/V5 簽章驗證、交易持久化與背景查詢；付款選項與本機通知占位路由的後續調整見上方 2026-09-17 紀錄。
 - 購物車、結帳、訂單與綠界付款金額均為保存的商品小計，運費尚未實作；首頁仍保留「滿額免運」靜態文案，與目前功能不一致。月配、評論、配送文案沒有對應服務。
 - 商品刪除除pending訂單409外，還可能受cart_items外鍵阻擋而500。
 - JWT role取token、DB只查帳號存在；前端角色只是導覽；HTML路由沒有伺服器認證。

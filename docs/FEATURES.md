@@ -12,13 +12,13 @@
 | 登入後合併訪客車 | 🚧 進行中 | session 車保留，會員查詢不會讀它 |
 | 收件資料與交易建單 | ✅ 完成 | 基本建單／空車驗證；交易失敗及併發缺乏測試 |
 | 個人訂單列表／詳情 | ✅ 完成 | 限本人；列表沒有分頁 |
-| ECPay 本機主動查詢付款 | ✅ 完成 | AIO、驗簽、持久排程與 8 個付款相關測試完成；真實測試卡／Server Notify 不在本機作業範圍 |
+| ECPay 本機主動查詢付款 | ✅ 完成 | AIO、驗簽、持久排程與 9 個付款相關測試完成；ReturnURL 僅有本機占位路由，未處理 Server Notify |
 | 後台商品 CRUD | ✅ 完成 | 6 個 API 測試；刪除可能受購物車外鍵阻擋 |
 | 後台訂單篩選／詳情 | ✅ 完成 | 4 個 API 測試；沒有修改訂單端點 |
 | 運費 | 🚧 進行中 | 購物車、結帳與訂單均只顯示和保存商品小計；首頁仍保留未接線的免運宣傳文案 |
 | Toast、空狀態、loading | ✅ 完成 | 無瀏覽器自動測試；部分 API 失敗會偽裝成空列表 |
 | 購物車 badge | 🚧 進行中 | 初載按項目筆數，加購卻每次加一；刪除／改量不即時同步 |
-| 訂閱、評論、物流、退款 | 🚧 進行中 | 靜態文案／商品說明不等於业务功能 |
+| 訂閱、評論、物流、退款 | 🚧 進行中 | 靜態文案／商品說明不等於業務功能 |
 | OpenAPI 產生 | ✅ 完成 | JSON 產生器；無 Swagger UI，部分註解與實作不同 |
 
 ## 共通查詢、格式與錯誤
@@ -73,11 +73,11 @@ parseInt 會接受如 `'2abc'` 得 2、`'1.9'` 得 1，不是嚴格型別驗證�
 
 ### 個人資料：GET /api/auth/profile
 
-需要 Bearer JWT，無 query 或 body。通過 middleware 後以 req.user.userId 查 `{id,email,name,role,created_at}`。route 有 404 NOT_FOUND 分支，但一般不存在帳號會先被 authMiddleware 以 401 擋下。profile 角色来自 DB，middleware 授權角色来自 token；兩者在角色修改後可能不同。
+需要 Bearer JWT，無 query 或 body。通過 middleware 後以 req.user.userId 查 `{id,email,name,role,created_at}`。route 有 404 NOT_FOUND 分支，但一般不存在帳號會先被 authMiddleware 以 401 擋下。profile 角色來自 DB，middleware 授權角色來自 token；兩者在角色修改後可能不同。
 
 ### 瀏覽器登入與登出
 
-`/login` 提供登入／註冊 tabs、欄位提示及 submitting 防重送。成功後 Auth.login 存 token 與 user，讀 `redirect` query 導頁，缺少則回 `/`。redirect 未限制同源路径。Auth.logout 只清 token／user 再跳首頁，session ID 保留，也不撤銷既有 JWT。
+`/login` 提供登入／註冊 tabs、欄位提示及 submitting 防重送。成功後 Auth.login 存 token 與 user，讀 `redirect` query 導頁，缺少則回 `/`。redirect 未限制同源路徑。Auth.logout 只清 token／user 再跳首頁，session ID 保留，也不撤銷既有 JWT。
 
 apiFetch 的 401 一律清身分、導 `/login`、回 undefined，這也包含登入密碼錯誤。requireAuth 保留 pathname 到 `/login?redirect=...`，但全域 401 導頁不保留原路徑；requireAdmin 也不保留 redirect。JWT 確切參數、角色更新限制與 session 流程見架構文件。
 
@@ -157,11 +157,15 @@ JWT 必要。用訂單 id 和 req.user.userId 同時查詢；查無或他人訂�
 
 ## ECPay 測試付款
 
-所有付款端點都要求本人 JWT；訂單不存在或不屬於本人一律回 404 `NOT_FOUND`。瀏覽器不送付款成功／失敗結果，訂單狀態只會在後端查詢 ECPay、驗證 `CheckMacValue`，並比對商店編號、交易編號與金額後才更新。
+所有 `/api/orders/:id/payment` 付款端點都要求本人 JWT；訂單不存在或不屬於本人一律回 404 `NOT_FOUND`。瀏覽器不送付款成功／失敗結果，訂單狀態只會在後端查詢 ECPay、驗證 `CheckMacValue`，並比對商店編號、交易編號與金額後才更新。
 
 ### POST /api/orders/:id/payment
 
-不需要 body。後端先檢查 staging 設定，再以已保存的 `orders.total_amount`、訂單明細快照建立一筆 `payment_attempts`，回傳 ECPay AIO 的 `action`、隱藏欄位和 `payment` 摘要。前端將欄位組成同頁 POST 表單；`ChoosePayment=Credit` 限制為可由本機主動查詢確認的測試信用卡流程。ATM、超商、條碼與 BNPL 等離線付款需要 Server Notify，不在本機作業範圍。
+不需要 body。後端先檢查 staging 設定，再以已保存的 `orders.total_amount`、訂單明細快照建立一筆 `payment_attempts`，回傳 ECPay AIO 的 `action`、隱藏欄位和 `payment` 摘要。前端將欄位組成同頁 POST 表單；`ChoosePayment=ALL` 讓測試付款頁顯示所有付款方式。ATM、超商、條碼與 BNPL 等離線付款尚未完成本機端到端驗收；不能把顯示選項視為已完整支援付款確認。
+
+### POST /api/ecpay/notify
+
+此本機 ReturnURL 占位端點不要求 JWT，接受 POST 並直接回覆 HTTP 200、純文字 `1|OK`。它不驗證通知內容、不更新訂單；綠界無法連入本機 localhost，付款狀態仍只依後端主動查詢的驗簽結果更新。
 
 同一訂單已有 `pending` 交易時回 409 `PAYMENT_PENDING`；已付款回 400 `INVALID_STATUS`；failed 訂單僅在最近交易也經驗簽確認為 failed 時才可重建付款，否則回 400 `INVALID_STATUS`。缺少 ECPay 密鑰或 `ECPAY_ENV` 不是 `staging` 回 503 `PAYMENT_NOT_CONFIGURED`。建立交易衝突回 409 `PAYMENT_CONFLICT`。
 
@@ -203,7 +207,7 @@ description 和 image_url 可以明確傳 null 或空字串以清除；這與 PO
 
 ### DELETE /api/admin/products/:id
 
-查无商品 404；任一 order_items 指向此商品且 orders.status=pending 時回 409 CONFLICT。沒有 pending 才執行 DELETE。paid／failed 明細沒有商品 FK，歷史紀錄可留存；cart_items 卻有 FK，所以即使沒有 pending 訂單，只要有任何會員或訪客車引用仍可能 500 INTERNAL_ERROR。沒有自動清理購物車或軟刪除機制。
+查無商品 404；任一 order_items 指向此商品且 orders.status=pending 時回 409 CONFLICT。沒有 pending 才執行 DELETE。paid／failed 明細沒有商品 FK，歷史紀錄可留存；cart_items 卻有 FK，所以即使沒有 pending 訂單，只要有任何會員或訪客車引用仍可能 500 INTERNAL_ERROR。沒有自動清理購物車或軟刪除機制。
 
 成功為 200、data=null，不是 204。不要在取得 409 後改寫訂單狀態以「繞過」刪除條件；未來的刪除策略需設計訂單快照、車項目與稽核行為。
 

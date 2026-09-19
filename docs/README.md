@@ -4,9 +4,9 @@
 
 這是將花卉購物網站前台、管理後台與 REST API 放在同一個 Node.js 專案的教學實作。套件名稱為 `backend-project`，`package.json` 版本為 `1.0.0`、`private: true`。網站不是獨立 Vue SPA：Express 回傳 EJS 頁面，頁面再以瀏覽器中的 Vue 3 與 Fetch 載入、操作資料。
 
-訪客可以瀏覽商品、使用購物車；註冊登入後可以建立訂單、查看個人訂單並前往 ECPay 測試信用卡付款頁。訂單付款狀態由後端主動查詢、驗簽後更新。管理員可新增、編輯、刪除商品，以及查看全站訂單。所有資料保存在專案根目錄 SQLite 檔案，不需要另啟資料庫服務。
+訪客可以瀏覽商品、使用購物車；註冊登入後可以建立訂單、查看個人訂單並前往 ECPay 測試付款頁，表單開放所有付款方式。訂單付款狀態由後端主動查詢、驗簽後更新。管理員可新增、編輯、刪除商品，以及查看全站訂單。所有資料保存在專案根目錄 SQLite 檔案，不需要另啟資料庫服務。
 
-文件以目前原始碼為準。「已實作」表示路由及畫面已有對應程式，不代表所有邊界、安全性或瀏覽器流程都有自動測試。ECPay 僅接上測試環境，尚未完成無 Server Notify 的實際端到端驗收；訪客購物車合併、運費、訂單取消、退款與物流追蹤尚未實作；商品文案中的月配訂閱亦不是週期扣款功能。
+文件以目前原始碼為準。「已實作」表示路由及畫面已有對應程式，不代表所有邊界、安全性或瀏覽器流程都有自動測試。ECPay 僅接上測試環境；本機 ReturnURL 路由只回覆 `1|OK`，不處理綠界通知或更新訂單，離線付款方式尚未完成端到端驗收。訪客購物車合併、運費、訂單取消、退款與物流追蹤尚未實作；商品文案中的月配訂閱亦不是週期扣款功能。
 
 ## 技術棧
 
@@ -23,7 +23,7 @@
 | 瀏覽器互動 | Vue 3 CDN global production build | 每頁 `createApp(...).mount('#app')`；不由 npm 鎖定確切版本 |
 | 樣式 | Tailwind CSS／CLI 4.2.2 | CSS-first `@theme`，產生 `/css/output.css` |
 | 文件生成 | swagger-jsdoc 6.2.8 | `@openapi` 註解轉為 OpenAPI 3.0.3 JSON |
-| 測試 | Vitest 2.1.9、Supertest 7.2.2 | 8 份測試檔、40 個案例；含 ECPay 簽章／表單及付款排程模擬測試 |
+| 測試 | Vitest 2.1.9、Supertest 7.2.2 | 8 份測試檔、41 個案例；含 ECPay 簽章／表單、本機通知路由及付款排程模擬測試 |
 | 外部資源 | unpkg、Google Fonts、Unsplash | Vue、中文字型與商品／形象圖片；瀏覽器需可連線 |
 
 better-sqlite3 鎖定版本宣告支援 Node `20.x || 22.x || 23.x || 24.x || 25.x`，bcrypt 要求 Node `>=18`。原生套件安裝可能需要下載預編譯檔，缺少相符檔案時會進入本機編譯；不能只看 Express 的最低 Node 版本選擇環境。
@@ -102,7 +102,7 @@ Invoke-RestMethod -Uri 'http://localhost:3001/api/products?page=1&limit=2'
 1. 開啟 `/login` 註冊一般會員，確認登入後導覽列顯示姓名。
 2. 到首頁選擇有庫存商品加入購物車，再到 `/cart` 修改數量。
 3. 前往 `/checkout`，填寫收件人姓名、Email、地址，提交後應跳到 `/orders/:id`。
-4. 訂單初始為 `pending`，此时庫存已扣、會員購物車已清空。
+4. 訂單初始為 `pending`，此時庫存已扣、會員購物車已清空。
 5. 點付款成功或失敗，訂單分別變成 `paid` 或 `failed`，按鈕消失；失敗後不能重付且不補庫存。
 6. 以管理員登入 `/admin/orders`，確認可查看該訂單、明細及買家資料。
 
@@ -114,10 +114,10 @@ Invoke-RestMethod -Uri 'http://localhost:3001/api/products?page=1&limit=2'
 | --- | --- |
 | `Fatal: JWT_SECRET is not set` | 在啟動的同一終端設環境變數，或編輯根目錄 `.env`；檢查的是非空，不會辨識範本 placeholder |
 | 頁面無樣式 | `dev:server` 沒有建 CSS；執行 `npm run css:build`，確認 `/css/output.css` 可取得 |
-| 頁面有 HTML 但按鈕不動 | Vue 來自 unpkg，檢查 CDN 網路、瀏覽器 Console 與脚本載入顺序 |
+| 頁面有 HTML 但按鈕不動 | Vue 來自 unpkg，檢查 CDN 網路、瀏覽器 Console 與腳本載入順序 |
 | 後台跳登入 | localStorage 沒有 token 或 user.role 不是 admin；真正 API 權限另由 middleware 驗證 |
 | 修改管理員環境變數沒效果 | seed 對已存在 email 不更新；不能用重啟當作改密碼 |
-| npm `EPERM` | 檢查實際失敗路徑、權限與檔案占用；受限环境可試 `npm ci --cache .tmp-docs-npm-cache`，不要刪除資料庫作為修復 |
+| npm `EPERM` | 檢查實際失敗路徑、權限與檔案占用；受限環境可試 `npm ci --cache .tmp-docs-npm-cache`，不要刪除資料庫作為修復 |
 | 測試反覆執行後庫存不足 | 測試使用同一 DB 且不清理；在可丟棄副本驗證，詳見 TESTING |
 
 ## 文件索引

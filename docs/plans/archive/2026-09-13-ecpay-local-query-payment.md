@@ -129,3 +129,7 @@ AIO 的 `ReturnURL` 仍為必填。測試設定使用獨立、無業務處理的
 `npm test` 通過 8 個測試檔、40 個案例。付款相關測試涵蓋 CheckMacValue／表單、重複付款防護、驗簽成功入帳、金額不符、HTTP 403 暫停與節流；測試啟動時使用唯一的暫存 SQLite 檔，不會寫入開發資料庫。`npm run css:build` 與 `npm run openapi` 均成功。
 
 本計畫以本機主動查詢驗證為完成範圍；Server Notify、公開 ReturnURL 與真實測試卡端對端付款均依作業限制排除，未作為完成條件。
+
+### 後續註記（2026-09-17）
+
+以上保留 2026-09-13 的原訂範圍與驗證紀錄。後續檢查發現實際 AIO 表單使用 `ChoosePayment=ALL`，與當時的 Credit 文件及測試預期不一致；已依 [後續計畫](./2026-09-17-ecpay-feedback-alignment.md) 對齊。ReturnURL 也改指向本機通知占位路由，該路由只回覆 `1|OK`，不驗簽或更新訂單。

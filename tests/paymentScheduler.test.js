@@ -58,7 +58,7 @@ describe('ECPay payment API and scheduler', () => {
 
     expect(paymentRes.status).toBe(200);
     expect(paymentRes.body.data.action).toBe('https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5');
-    expect(paymentRes.body.data.fields.ChoosePayment).toBe('Credit');
+    expect(paymentRes.body.data.fields.ChoosePayment).toBe('ALL');
     expect(paymentRes.body.data.fields.CheckMacValue).toHaveLength(64);
 
     const duplicateRes = await request(app)

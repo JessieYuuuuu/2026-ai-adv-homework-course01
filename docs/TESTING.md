@@ -4,9 +4,11 @@
 
 目前測試為 Vitest 2.1.9 + Supertest 7.2.2 的 API 整合測試。tests/setup.js 直接 require app，請求走真正 Express middleware、JWT、bcrypt、SQLite 與 seed，沒有 mock database 或第三方服務。Supertest 使用 app 建立測試所需 HTTP server，不需要先 `npm start` 或占用固定 3001。
 
-現有 8 份 `.test.js` 共 40 個 `it`：其中 6 份為 API 整合測試，另有 2 份 ECPay 簽章／表單與付款排程測試。沒有 browser E2E、DOM 測試、視覺快照、真實測試卡付款、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 行為，不能推定跨 owner、交易 rollback 或所有輸入邊界已驗證。
+現有 8 份 `.test.js` 共 41 個 `it`：其中 6 份為一般 API 整合測試，另有 2 份 ECPay 簽章／表單、本機通知路由與付款排程測試。沒有 browser E2E、DOM 測試、視覺快照、真實測試卡付款、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 行為，不能推定跨 owner、交易 rollback 或所有輸入邊界已驗證。
 
 ## 實測紀錄
+
+2026-09-17 在專案根目錄執行 `npm test` 與 `npm run openapi`：8 份測試檔、41 個案例全部通過；OpenAPI 成功產生 17 個 path、22 個 method 操作。本機通知路由測試只驗證 HTTP 200 與純文字 `1|OK`，不代表綠界能連入 localhost 或通知內容已通過驗簽。測試使用唯一的暫存 SQLite 檔。
 
 2026-09-13 在專案根目錄執行 `npm test`、`npm run css:build` 與 `npm run openapi`：
 
@@ -16,7 +18,7 @@
 | `npm run css:build` | 通過 | Tailwind 產生已忽略 Git 的 `public/css/output.css`。 |
 | `npm run openapi` | 通過 | 重新產生 `openapi.json`，付款端點註解可成功解析。 |
 
-此驗證不呼叫綠界，也不測試 Server Notify 或真實測試卡付款；這些外部流程不屬本機作業的驗收範圍。
+此驗證不呼叫綠界，也不測試真實 Server Notify 或測試卡付款；新增的本機通知路由測試只斷言固定回覆 `1|OK`。
 
 2026-09-11 在獨立程式副本、全新 SQLite、Node 22.23.2／npm 11.2.0，設定測試 JWT 與預設管理員後執行：
 
@@ -34,13 +36,13 @@
 | 檔案 | 案例數 | 覆蓋內容 | 建置資料與依賴 |
 | --- | --- | --- | --- |
 | `tests/setup.js` | helper，非 test | app、request、getAdminToken、registerUser | 引入時建表／seed；不清資料、不重設 secret |
-| `tests/auth.test.js` | 6 | 註冊成功、重複email、管理員登入、錯密碼、profile、有無token | 後續重複／profile依赖首案例的email／token；管理員帳密固定 |
+| `tests/auth.test.js` | 6 | 註冊成功、重複email、管理員登入、錯密碼、profile、有無token | 後續重複／profile依賴首案例的email／token；管理員帳密固定 |
 | `tests/products.test.js` | 4 | 列表、limit=2分頁、詳情、404 | 第一案例取得商品id，詳情依賴它；要求至少有一商品 |
 | `tests/cart.test.js` | 6 | 訪客新增／讀／改3件／刪、會員加2件、商品404 | beforeAll取列表第一商品；訪客CRUD沿用itemId；會員項目不清理 |
 | `tests/orders.test.js` | 6 | 建單、空車、無認證、本人列表／詳情、404 | beforeAll註冊並加1件；首案例建單後，空車與詳情依賴結果 |
 | `tests/adminProducts.test.js` | 6 | 列表、新增、部分更新、刪除、會員403、無token401 | beforeAll取admin token；新增→更新→刪除共享createdProductId |
 | `tests/adminOrders.test.js` | 4 | 列表、pending篩選、詳情、會員403 | beforeAll登入admin並註冊會員、加1件、建立pending訂單 |
-| `tests/ecpayService.test.js` | 3 | 官方 SHA256 CheckMacValue 向量、竄改金額驗簽失敗、AIO staging 表單 | 不呼叫綠界；使用固定測試商店參數與本機物件 |
+| `tests/ecpayService.test.js` | 4 | 官方 SHA256 CheckMacValue 向量、竄改金額驗簽失敗、AIO staging 表單、本機通知路由 | 不呼叫綠界；使用固定測試商店參數與 Supertest |
 | `tests/paymentScheduler.test.js` | 5 | AIO 表單、pending 唯一約束、已簽章成功入帳、金額不符、HTTP 403 暫停與 5 秒節流 | 建單後以可注入 `fetchImpl` 模擬 QueryTradeInfo/V5；不對外發出 HTTP 請求 |
 
 現有多數負向案例只斷言 error 非 null，而非精確機器碼；新增測試應同時斷言 status、error 及必要副作用，避免錯誤分支完全不同卻仍通過。
@@ -51,7 +53,7 @@ vitest.config.js 設 `globals:true`，所以 test 檔不用 import describe／it
 
 設定中 `sequence.files` 列了 auth → products → cart → orders → adminProducts → adminOrders 的檔名字串，但這不是本版 Vitest 的自訂排序器，不能當作實際執行順序保證。本次實際順序為 orders → cart → adminProducts → auth → adminOrders → products，與陣列不同。若日後需要特定檔案排序，應實作對應 sequencer；更好的 fixture 設計是不依賴其他檔案先完成。
 
-跨檔沒有直接共享 JavaScript 變數，但共享同一 SQLite 檔與 seed 商品。兩份 orders 測試各扣1件；cart 的會員加2件保留在DB；反覆執行会累積會員／訂單並消耗商品庫存，且 seed 不補非空商品表。不要以禁止平行推定已做到資料隔離。
+跨檔沒有直接共享 JavaScript 變數，但共享同一 SQLite 檔與 seed 商品。兩份 orders 測試各扣1件；cart 的會員加2件保留在DB；反覆執行會累積會員／訂單並消耗商品庫存，且 seed 不補非空商品表。不要以禁止平行推定已做到資料隔離。
 
 檔內鏈式依賴如下：
 
@@ -129,7 +131,7 @@ setup.js 的 app 是 `require('../app')`，request 是 Supertest 的函式。典
 
 ### getAdminToken()
 
-POST `/api/auth/login`，固定 email=`admin@hexschool.com`、password=`12345678`，回 `res.body.data.token`。函式沒有先 assert status，也不接受 overrides。若 DB 沒這個帳號或密碼不符，会以 data=null 的屬性存取錯誤呈現，掩蓋原本401。
+POST `/api/auth/login`，固定 email=`admin@hexschool.com`、password=`12345678`，回 `res.body.data.token`。函式沒有先 assert status，也不接受 overrides。若 DB 沒這個帳號或密碼不符，會以 data=null 的屬性存取錯誤呈現，掩蓋原本401。
 
 ### registerUser(overrides={})
 
@@ -147,7 +149,7 @@ POST `/api/auth/login`，固定 email=`admin@hexschool.com`、password=`12345678
 4. 記錄並按 FK 依賴順序清理自己建立資料，不能清空所有其他案例的資料。
 5. 先跑完整相關檔，再跑全套確認共享 DB 不受污染。若涉及畫面，另跑下節手動流程。
 
-下例可存成 `tests/cartIsolation.test.js`，在可丟棄 DB 中執行；使用測試專屬商品和两位會員，驗證乙不能改甲的車，並保留原量。這是文件範例，本次未新增此測試檔：
+下例可存成 `tests/cartIsolation.test.js`，在可丟棄 DB 中執行；使用測試專屬商品和兩位會員，驗證乙不能改甲的車，並保留原量。這是文件範例，本次未新增此測試檔：
 
 ```js
 const { app, request, getAdminToken, registerUser } = require('./setup');
@@ -223,7 +225,7 @@ describe('Cart ownership', () => {
 | 付款 | success/fail、重付、他人訂單、不合法action、失敗不補庫存 | 現有orders.test完全未呼叫pay |
 | 刪商品 | pending 409、cart FK 500、paid/failed歷史快照保留 | 現有只刪無引用的新商品 |
 | 分頁 | 0、負數、>100、末頁外、非法status被忽略 | 現有只測limit=2和pending |
-| 錯誤 | malformed JSON、安全message、HTML render例外 | 集中handler與页面callback回應不同 |
+| 錯誤 | malformed JSON、安全message、HTML render例外 | 集中handler與頁面callback回應不同 |
 | UI | 登入401導頁、訪客轉會員、badge、空狀態與網路失敗 | API測試不跑JavaScript／CDN |
 
 ## 手動驗收指南
@@ -231,11 +233,11 @@ describe('Cart ownership', () => {
 用可丟棄資料啟動網站並建好 CSS，打開瀏覽器 Console／Network。以下是驗收步驟，不表示本次已逐項人工完成。
 
 1. 訪客首頁：商品與圖片出現，分頁 limit=9，售完按鈕禁用；點詳情數量不能低於1或高於載入庫存。
-2. 訪客車：加入同商品两次，確認只一列但量累加；改量、刪除有確認對話框；重載後資料仍在同session。
+2. 訪客車：加入同商品兩次，確認只一列但量累加；改量、刪除有確認對話框；重載後資料仍在同session。
 3. 登入切換：訪客車有商品時登入，新會員車可能空，登出後訪客車仍在；依現況紀錄，不誤判為合併完成。
 4. 結帳：登入後加商品，缺收件欄位與錯email顯示提示；有效提交後跳詳情、pending、清車與扣庫存。
 5. 付款：兩張分開訂單測成功與失敗，觀察status、按鈕消失；再次PATCH被拒；查庫存確認失敗不回補。
-6. 低價商品：管理員建立300元商品，前端顯示450、訂單保存300；目前应記為已知缺口，修復后再改驗收預期。
+6. 低價商品：管理員建立300元商品，前端顯示450、訂單保存300；目前應記為已知缺口，修復後再改驗收預期。
 7. 管理後台：普通會員直接呼叫admin API應403；管理員增改刪、pending篩選、modal明細；買家與收件人分別顯示。
 8. 錯誤／資源：失效JWT觸發登入導頁；不明API是JSON404，不明頁面是HTML404；測CDN失敗時查看Console而非認定後端掛掉。
 

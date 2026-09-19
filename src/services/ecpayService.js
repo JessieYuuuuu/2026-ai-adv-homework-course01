@@ -49,6 +49,7 @@ function cleanItemName(items) {
 }
 
 function buildPaymentForm({ attempt, order, items, config }) {
+  const baseUrl = (process.env.BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
   const fields = {
     MerchantID: config.merchantId,
     MerchantTradeNo: attempt.merchant_trade_no,
@@ -57,9 +58,9 @@ function buildPaymentForm({ attempt, order, items, config }) {
     TotalAmount: String(order.total_amount),
     TradeDesc: 'Flower Life order',
     ItemName: attempt.item_name || cleanItemName(items),
-    ReturnURL: 'http://localhost/ecpay/notify-unavailable',
+    ReturnURL: `${baseUrl}/api/ecpay/notify`,
     ChoosePayment: 'ALL',
-    ClientBackURL: `${process.env.BASE_URL || 'http://localhost:3001'}/orders/${order.id}`,
+    ClientBackURL: `${baseUrl}/orders/${order.id}`,
     EncryptType: '1'
   };
   return { action: config.paymentAction, fields: { ...fields, CheckMacValue: createCheckMacValue(fields, config) } };

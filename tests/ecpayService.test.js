@@ -1,4 +1,5 @@
 const { createCheckMacValue, verifyCheckMacValue, buildPaymentForm } = require('../src/services/ecpayService');
+const { app, request } = require('./setup');
 
 const config = {
   merchantId: '3002607',
@@ -26,15 +27,22 @@ describe('ECPay CheckMacValue', () => {
     expect(verifyCheckMacValue({ ...fields, TradeAmt: '999' }, config)).toBe(false);
   });
 
-  it('builds a staging credit-card payment form', () => {
+  it('builds a staging payment form with all payment methods', () => {
     const form = buildPaymentForm({
       attempt: { merchant_trade_no: 'FLTEST123', item_name: '測試花束 x 1' },
       order: { id: 'order-id', total_amount: 1000 }, items: [], config
     });
     expect(form.action).toBe(config.paymentAction);
-    expect(form.fields.ChoosePayment).toBe('Credit');
+    expect(form.fields.ChoosePayment).toBe('ALL');
     expect(form.fields.TotalAmount).toBe('1000');
     expect(form.fields.CheckMacValue).toHaveLength(64);
-    expect(form.fields.ReturnURL).toBe('http://localhost/ecpay/notify-unavailable');
+    expect(form.fields.ReturnURL).toBe('http://localhost:3001/api/ecpay/notify');
+  });
+
+  it('provides a local plain-text ReturnURL endpoint', async () => {
+    const res = await request(app).post('/api/ecpay/notify').type('form').send({ MerchantTradeNo: 'LOCAL-TEST' });
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/^text\/plain/);
+    expect(res.text).toBe('1|OK');
   });
 });
