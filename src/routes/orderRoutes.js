@@ -5,17 +5,11 @@ const db = require('../database');
 const authMiddleware = require('../middleware/authMiddleware');
 const { getConfig, cleanItemName, buildPaymentForm } = require('../services/ecpayService');
 const { verifyAttempt, verifyReturnedAttempt, paymentSummary, QUERY_INTERVAL_MS } = require('../services/paymentScheduler');
+const { OrderCreationError, createOrderFromCart } = require('../services/orderService');
 
 const router = express.Router();
 
 router.use(authMiddleware);
-
-function generateOrderNo() {
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const random = uuidv4().slice(0, 5).toUpperCase();
-  return `ORD-${dateStr}-${random}`;
-}
 
 function generateMerchantTradeNo() {
   return `FL${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(5).toString('hex').toUpperCase()}`.slice(0, 20);
@@ -113,79 +107,24 @@ router.post('/', (req, res) => {
     });
   }
 
-  // Get cart items with product info
-  const cartItems = db.prepare(
-    `SELECT ci.id, ci.product_id, ci.quantity,
-            p.name as product_name, p.price as product_price, p.stock as product_stock
-     FROM cart_items ci
-     JOIN products p ON ci.product_id = p.id
-     WHERE ci.user_id = ?`
-  ).all(userId);
-
-  if (cartItems.length === 0) {
-    return res.status(400).json({
-      data: null,
-      error: 'CART_EMPTY',
-      message: '購物車為空'
-    });
-  }
-
-  // Check stock
-  const insufficientItems = cartItems.filter(item => item.quantity > item.product_stock);
-  if (insufficientItems.length > 0) {
-    const names = insufficientItems.map(i => i.product_name).join(', ');
-    return res.status(400).json({
-      data: null,
-      error: 'STOCK_INSUFFICIENT',
-      message: `以下商品庫存不足：${names}`
-    });
-  }
-
-  // Calculate total
-  const totalAmount = cartItems.reduce(
-    (sum, item) => sum + item.product_price * item.quantity, 0
-  );
-
-  const orderId = uuidv4();
-  const orderNo = generateOrderNo();
-
-  // Transaction: create order, order items, deduct stock, clear cart
-  const createOrder = db.transaction(() => {
-    db.prepare(
-      `INSERT INTO orders (id, order_no, user_id, recipient_name, recipient_email, recipient_address, total_amount)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(orderId, orderNo, userId, recipientName, recipientEmail, recipientAddress, totalAmount);
-
-    const insertItem = db.prepare(
-      `INSERT INTO order_items (id, order_id, product_id, product_name, product_price, quantity)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    );
-
-    const updateStock = db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?');
-
-    for (const item of cartItems) {
-      insertItem.run(uuidv4(), orderId, item.product_id, item.product_name, item.product_price, item.quantity);
-      updateStock.run(item.quantity, item.product_id);
+  let result;
+  try {
+    result = createOrderFromCart({ userId, recipientName, recipientEmail, recipientAddress });
+  } catch (error) {
+    if (error instanceof OrderCreationError) {
+      return res.status(400).json({ data: null, error: error.code, message: error.message });
     }
-
-    db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(userId);
-  });
-
-  createOrder();
-
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
-  const orderItems = db.prepare(
-    'SELECT product_name, product_price, quantity FROM order_items WHERE order_id = ?'
-  ).all(orderId);
+    throw error;
+  }
 
   res.status(201).json({
     data: {
-      id: order.id,
-      order_no: order.order_no,
-      total_amount: order.total_amount,
-      status: order.status,
-      items: orderItems,
-      created_at: order.created_at
+      id: result.order.id,
+      order_no: result.order.order_no,
+      total_amount: result.order.total_amount,
+      status: result.order.status,
+      items: result.orderItems,
+      created_at: result.order.created_at
     },
     error: null,
     message: '訂單建立成功'

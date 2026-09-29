@@ -10,6 +10,7 @@
 
 ### Added
 
+- 2026-09-29 新增 `src/services/orderService.js`，集中處理會員購物車建單、明細快照、庫存扣除與清空購物車的單一交易；既有 `/api/orders` 回應契約維持不變。實作與驗證見 [計畫紀錄](./plans/archive/2026-09-29-cart-badge-order-service.md)。
 - 2026-09-17 新增本機 `POST /api/ecpay/notify` 占位路由，回覆純文字 `1|OK`；通知內容不參與付款狀態更新。實作與限制見 [計畫紀錄](./plans/archive/2026-09-17-ecpay-feedback-alignment.md)。
 - 2026-09-13 新增 ECPay staging 付款流程：建立 AIO 表單、保存 `payment_attempts` 與排程狀態、以 QueryTradeInfo/V5 查詢並驗證 CheckMacValue、商店編號、交易編號與訂單金額。
 - 新增本人付款建立、到期手動查詢與付款頁返回查詢端點；背景排程每 30 秒掃描到期交易，單筆查詢維持 10 分鐘間隔，HTTP 403 會保存 30 分鐘全域暫停。
@@ -17,12 +18,14 @@
 
 ### Changed
 
+- 2026-09-29 將訂單建立 route 的交易邏輯移至 service；購物車 badge 在初次載入、加購、改量與刪除後都重新同步目前項目數，避免重複加購造成數字漂移。
 - 2026-09-17 將文件與測試對齊表單實際送出的 `ChoosePayment=ALL`，並將 ReturnURL 指向本機占位路由；付款結果仍由後端查詢驗簽確認。統一 `docs/` 的繁體字用法。
 - 付款狀態不再接受瀏覽器模擬結果；僅在後端驗簽並比對查詢回應後更新訂單。購物車、結帳、訂單與付款表單均使用保存的商品小計。
 - 同步更新 README、架構、開發規範、功能與測試文件；外部 ReturnURL 與真實測試卡驗收不屬本機作業範圍，計畫已依本機完成條件歸檔至 `docs/plans/archive/`。
 
 ### Fixed
 
+- 2026-09-29 修正購物車 badge 與實際項目列數不一致的問題；`node --check`、`git diff --check` 通過，`npm test` 通過 8 檔、41 案例。
 - 2026-09-17 修正 ReturnURL 死路徑及付款表單測試預期與實作不一致；`npm test` 通過 8 檔、41 案例，`npm run openapi` 產生 17 個 path、22 個 method 操作。
 - 移除購物車與結帳頁未入帳的運費摘要；首頁保留的「滿額免運」僅為待處理靜態文案。
 

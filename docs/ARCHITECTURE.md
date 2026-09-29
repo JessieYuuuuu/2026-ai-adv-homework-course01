@@ -2,7 +2,7 @@
 
 ## 架構邊界與技術決策
 
-本專案是單一 Express 應用，包含 JSON API、EJS 頁面與靜態檔案。後端沒有獨立 service、repository、controller、ORM、queue 或 migration 系統。路由直接執行同步 better-sqlite3 SQL；新增業務規則時，必須檢查所有直接讀寫同一張表的路由，不能假設已有共同領域服務處理一致性。
+本專案是單一 Express 應用，包含 JSON API、EJS 頁面與靜態檔案。後端沒有 repository、controller、ORM、queue 或 migration 系統；訂單建立交易集中在 `src/services/orderService.js`，其他路由仍直接執行同步 better-sqlite3 SQL。新增業務規則時，必須檢查所有直接讀寫同一張表的路由，不能假設已有共同領域服務處理一致性。
 
 EJS 只渲染版型與少量路由參數，商品、購物車、訂單內容由 Vue 在瀏覽器透過 API 取得。頁面導航會重新載入 HTML，不使用 Vue Router。Vue 由 CDN 提供，npm 只建置 CSS，沒有前端 JavaScript bundler。
 
@@ -64,7 +64,8 @@ flowchart LR
 | `src/routes/authRoutes.js` | 註冊、登入、個人資料；同步 bcrypt、JWT 簽發 |
 | `src/routes/productRoutes.js` | 公開商品分頁列表及詳情 |
 | `src/routes/cartRoutes.js` | 私有 dualAuth、owner SQL 選擇、查詢／累加／取代數量／刪除購物車項目 |
-| `src/routes/orderRoutes.js` | 會員建單交易、個人列表／詳情、ECPay 付款表單與本人查詢 |
+| `src/routes/orderRoutes.js` | 訂單 API 輸入驗證／回應、個人列表／詳情、ECPay 付款表單與本人查詢 |
+| `src/services/orderService.js` | 會員購物車建單交易、明細快照、庫存扣除與清車 |
 | `src/routes/ecpayRoutes.js` | 本機 ReturnURL 占位路由；回覆純文字 `1|OK`，不驗簽或更新訂單 |
 | `src/services/ecpayService.js` | 僅限 staging 的設定檢查、CheckMacValue 建立／驗證、AIO 表單與 QueryTradeInfo/V5 請求 |
 | `src/services/paymentScheduler.js` | 付款查詢節流、403 暫停、結果驗證、訂單狀態更新與 30 秒背景掃描 |
@@ -80,9 +81,9 @@ flowchart LR
 | `public/js/api.js` | apiFetch 全域函式，合併標頭、呼叫 Fetch、401 清身分導登入、其他 HTTP 錯誤拋物件 |
 | `public/js/header-init.js` | DOMContentLoaded 更新前台姓名、管理連結、訂單連結與購物車 badge |
 | `public/js/notification.js` | Notification 全域 toast，預設 info、3 秒淡出再 300ms 隱藏 |
-| `public/js/pages/index.js` | 首頁商品 limit=9、當頁推薦資料、加入一件商品及 badge 更新 |
-| `public/js/pages/product-detail.js` | 讀取 dataset.productId、詳情、數量上下限及加購 |
-| `public/js/pages/cart.js` | 載入 items、computed 小計、數量變更、刪除確認及結帳導頁 |
+| `public/js/pages/index.js` | 首頁商品 limit=9、當頁推薦資料、加入一件商品及 badge 重新同步 |
+| `public/js/pages/product-detail.js` | 讀取 dataset.productId、詳情、數量上下限、加購及 badge 重新同步 |
+| `public/js/pages/cart.js` | 載入 items、computed 小計、數量變更／刪除、badge 重新同步及結帳導頁 |
 | `public/js/pages/checkout.js` | requireAuth、收件欄位驗證、空車回購物車、防重複提交及建單導頁 |
 | `public/js/pages/login.js` | 登入／註冊 tabs、表單驗證、存 token／user、讀 redirect 導頁 |
 | `public/js/pages/orders.js` | requireAuth、載入個人訂單、狀態文案、失敗時顯示空列表 |

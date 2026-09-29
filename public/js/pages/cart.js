@@ -34,6 +34,7 @@ createApp({
         });
         var item = items.value.find(function (i) { return i.id === itemId; });
         if (item) item.quantity = qty;
+        if (window.refreshCartBadge) window.refreshCartBadge();
       } catch (e) {
         Notification.show('更新數量失敗', 'error');
       }
@@ -49,6 +50,7 @@ createApp({
       try {
         await apiFetch('/api/cart/' + deleteItemId.value, { method: 'DELETE' });
         items.value = items.value.filter(function (i) { return i.id !== deleteItemId.value; });
+        if (window.refreshCartBadge) window.refreshCartBadge();
         Notification.show('已從購物車移除', 'success');
       } catch (e) {
         Notification.show('移除失敗', 'error');

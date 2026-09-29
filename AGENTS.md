@@ -4,7 +4,7 @@
 
 花漾生活 Flower Life（npm 套件名稱 `backend-project`，版本 `1.0.0`）是花卉電商教學專案。Node.js／Express 提供 REST API 與 EJS 頁面，瀏覽器使用 CDN Vue 3，Tailwind CSS 4 負責樣式；better-sqlite3 直接存取根目錄 `database.sqlite`。目前包含商品、帳號、雙模式購物車、訂單、ECPay 測試付款方式及管理後台。
 
-後端採 CommonJS，沒有 controller/service/ORM 分層；SQL 與業務邏輯位於 `src/routes/*Routes.js`。頁面由 EJS 產生外框，再由 `public/js/pages/*.js` 呼叫 API。閱讀或修改模組時，必須同時檢查對應路由、頁面腳本、模板和測試。
+後端採 CommonJS，沒有 controller、repository、ORM 分層；訂單建立交易集中在 `src/services/orderService.js`，其他 SQL 與業務邏輯依功能分布於 `src/routes/*Routes.js`。頁面由 EJS 產生外框，再由 `public/js/pages/*.js` 呼叫 API。閱讀或修改模組時，必須同時檢查對應路由、service、頁面腳本、模板和測試。
 
 ## 常用指令
 

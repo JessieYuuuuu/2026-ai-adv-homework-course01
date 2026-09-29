@@ -26,12 +26,7 @@ createApp({
           body: JSON.stringify({ productId: product.value.id, quantity: quantity.value })
         });
         Notification.show('已加入購物車', 'success');
-        var badge = document.getElementById('cart-badge');
-        if (badge) {
-          var count = parseInt(badge.textContent || '0') + 1;
-          badge.textContent = count;
-          badge.style.display = 'flex';
-        }
+        if (window.refreshCartBadge) window.refreshCartBadge();
       } catch (e) {
         Notification.show('加入購物車失敗', 'error');
       } finally {

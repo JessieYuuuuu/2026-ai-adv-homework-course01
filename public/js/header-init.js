@@ -22,12 +22,15 @@ document.addEventListener('DOMContentLoaded', function () {
     ordersLink.style.display = Auth.isLoggedIn() ? '' : 'none';
   }
 
-  if (cartBadge) {
-    apiFetch('/api/cart').then(function (res) {
-      if (res && res.data && res.data.items && res.data.items.length > 0) {
-        cartBadge.textContent = res.data.items.length;
-        cartBadge.style.display = 'flex';
-      }
+  window.refreshCartBadge = function () {
+    if (!cartBadge) return Promise.resolve();
+    return apiFetch('/api/cart').then(function (res) {
+      var count = res && res.data && Array.isArray(res.data.items) ? res.data.items.length : 0;
+      cartBadge.textContent = count;
+      cartBadge.style.display = count > 0 ? 'flex' : 'none';
+      return count;
     }).catch(function () {});
-  }
+  };
+
+  window.refreshCartBadge();
 });

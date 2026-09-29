@@ -25,6 +25,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Local agent skills and reference files
+.agents/
+
 # Logs
 *.log
 npm-debug.log*

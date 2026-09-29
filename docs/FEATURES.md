@@ -17,7 +17,7 @@
 | 後台訂單篩選／詳情 | ✅ 完成 | 4 個 API 測試；沒有修改訂單端點 |
 | 運費 | 🚧 進行中 | 購物車、結帳與訂單均只顯示和保存商品小計；首頁仍保留未接線的免運宣傳文案 |
 | Toast、空狀態、loading | ✅ 完成 | 無瀏覽器自動測試；部分 API 失敗會偽裝成空列表 |
-| 購物車 badge | 🚧 進行中 | 初載按項目筆數，加購卻每次加一；刪除／改量不即時同步 |
+| 購物車 badge | ✅ 完成 | 以目前購物車項目筆數同步；沒有瀏覽器自動測試 |
 | 訂閱、評論、物流、退款 | 🚧 進行中 | 靜態文案／商品說明不等於業務功能 |
 | OpenAPI 產生 | ✅ 完成 | JSON 產生器；無 Swagger UI，部分註解與實作不同 |
 
@@ -124,7 +124,7 @@ apiFetch 的 401 一律清身分、導 `/login`、回 undefined，這也包含�
 
 購物車、結帳與訂單頁均顯示商品小計；後端 `cart.total`／`orders.total_amount` 與送往綠界的金額相同。運費、折扣與稅額尚未實作；首頁的「滿額免運」僅為未接線的靜態宣傳文案。
 
-header 初始 badge 是 items.length；首頁與詳情每成功加購直接加一，因此重複加同商品也會增加 badge。購物車內改量或刪除不更新 header badge，重載後才重新取項目筆數。不要將它當準確件數或金額依據。
+header 初始載入、首頁／詳情成功加購，以及購物車改量／刪除後，都重新讀取目前購物車的 `items.length`。同商品重複加購時，badge 仍反映項目列數，不會把數字當成商品總件數或金額。
 
 ## 結帳與訂單
 
@@ -141,7 +141,7 @@ header 初始 badge 是 items.length；首頁與詳情每成功加購直接加�
 
 前端 additionally 對姓名／地址 trim 驗空白；後端沒有相同 trim，因此不能把 UI 限制作 API 保證。驗收件資料後讀取 user_id 購物車 JOIN 商品，無項目 400 CART_EMPTY，任一 quantity>stock 回 400 STOCK_INSUFFICIENT 並列商品名稱。金額以當下商品價格重算，不相信請求 total，也不含稅、折扣或運費。
 
-通過檢查後產生訂單 id、`ORD-<UTC YYYYMMDD>-<UUID 前五碼大寫>`。一個 db.transaction 內寫訂單、明細快照、逐項扣庫存、清空此會員全部購物車。讀車、檢庫存與計總額在 transaction 外，沒有併發 retry；SQL 失敗會回滾寫入，未處理錯誤回 500。
+通過檢查後產生訂單 id、`ORD-<UTC YYYYMMDD>-<UUID 前五碼大寫>`。`src/services/orderService.js` 在單一 `db.transaction` 內讀取購物車、檢查庫存、計算金額、寫訂單與明細快照、逐項以庫存條件扣除庫存並清空此會員購物車。沒有併發 retry；SQL 失敗會回滾寫入，未處理錯誤回 500。
 
 成功 201，data 僅包含 `id,order_no,total_amount,status,items,created_at`；此處 items 只有 `product_name,product_price,quantity`，與詳情 items 的完整欄位不同。初始 status=pending，扣庫存已發生，不等待付款。商品 updated_at 在扣庫存時不更新。
 
