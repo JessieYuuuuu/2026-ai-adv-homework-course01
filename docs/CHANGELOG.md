@@ -10,6 +10,7 @@
 
 ### Added
 
+- 2026-10-05 使用 `frontend-design` skill 與 Pencil MCP 建立桌面／手機版黑金設計稿，涵蓋首頁、商品詳情、結帳、訂單建立及付款完成；7 張固定設計快照與說明保存於 `docs/design/`。
 - 2026-09-29 新增 `src/services/orderService.js`，集中處理會員購物車建單、明細快照、庫存扣除與清空購物車的單一交易；既有 `/api/orders` 回應契約維持不變。實作與驗證見 [計畫紀錄](./plans/archive/2026-09-29-cart-badge-order-service.md)。
 - 2026-09-17 新增本機 `POST /api/ecpay/notify` 占位路由，回覆純文字 `1|OK`；通知內容不參與付款狀態更新。實作與限制見 [計畫紀錄](./plans/archive/2026-09-17-ecpay-feedback-alignment.md)。
 - 2026-09-13 新增 ECPay staging 付款流程：建立 AIO 表單、保存 `payment_attempts` 與排程狀態、以 QueryTradeInfo/V5 查詢並驗證 CheckMacValue、商店編號、交易編號與訂單金額。
@@ -18,6 +19,7 @@
 
 ### Changed
 
+- 2026-10-05 將消費者前台視覺重設為「黑金高級花藝會所」：首頁採精品型錄式花藝影像與黑金品牌字體，並統一導覽、頁尾、商品詳情、購物車、結帳、訂單確認、付款完成、登入與空狀態的曜石黑、香檳金及響應式版面。管理後台不在本次範圍，API 與資料契約未變更；實作與驗證見 [計畫紀錄](./plans/archive/2026-10-05-storefront-redesign.md)。
 - 2026-09-29 將訂單建立 route 的交易邏輯移至 service；購物車 badge 在初次載入、加購、改量與刪除後都重新同步目前項目數，避免重複加購造成數字漂移。
 - 2026-09-17 將文件與測試對齊表單實際送出的 `ChoosePayment=ALL`，並將 ReturnURL 指向本機占位路由；付款結果仍由後端查詢驗簽確認。統一 `docs/` 的繁體字用法。
 - 付款狀態不再接受瀏覽器模擬結果；僅在後端驗簽並比對查詢回應後更新訂單。購物車、結帳、訂單與付款表單均使用保存的商品小計。

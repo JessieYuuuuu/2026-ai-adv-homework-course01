@@ -3,7 +3,7 @@ const { createApp, ref, onMounted } = Vue;
 createApp({
   setup() {
     const products = ref([]);
-    const pagination = ref({ total: 0, page: 1, limit: 9, totalPages: 0 });
+    const pagination = ref({ total: 0, page: 1, limit: 4, totalPages: 0 });
     const loading = ref(true);
 
     const featuredImages = [
@@ -17,7 +17,7 @@ createApp({
       page = page || 1;
       loading.value = true;
       try {
-        const res = await apiFetch('/api/products?page=' + page + '&limit=9');
+        const res = await apiFetch('/api/products?page=' + page + '&limit=4');
         products.value = res.data.products.map(function (p) {
           p._adding = false;
           return p;

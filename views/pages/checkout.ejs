@@ -1,77 +1,61 @@
-<div id="app">
-  <h1 class="text-2xl font-bold text-text-primary mb-6" style="font-family: 'Noto Serif TC', serif;">結帳</h1>
+<div id="app" class="checkout-page">
+  <div class="checkout-progress" aria-label="結帳進度">
+    <span><b>01</b> 購物車</span><span class="is-current"><b>02</b> 配送與付款</span><span><b>03</b> 訂單完成</span>
+  </div>
 
   <div v-if="loading" class="flex justify-center py-12">
     <div class="w-8 h-8 border-4 border-rose-primary border-t-transparent rounded-full animate-spin"></div>
   </div>
 
-  <div v-else class="flex flex-col lg:flex-row gap-8">
-    <!-- Left: Form -->
-    <div class="lg:w-3/5">
-      <div class="bg-white rounded-2xl shadow-sm p-6">
-        <h2 class="font-medium text-text-primary mb-4">收件資訊</h2>
+  <div v-else class="checkout-layout content-shell">
+    <section class="checkout-form">
+      <h1>完成您的訂單</h1>
+      <p class="checkout-intro">填寫收件資訊後，前往綠界安全付款頁面完成付款。</p>
+
+      <div class="checkout-section">
         <div class="space-y-4">
           <div>
             <label class="block text-sm text-text-secondary mb-1">收件人姓名</label>
-            <input
-              v-model="form.recipientName"
-              type="text"
-              placeholder="請輸入收件人姓名"
-              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors"
-              :class="{ 'border-red-400': errors.recipientName }"
-            />
+            <input v-model="form.recipientName" type="text" placeholder="請輸入收件人姓名" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors" :class="{ 'border-red-400': errors.recipientName }">
             <p v-if="errors.recipientName" class="text-red-500 text-xs mt-1">{{ errors.recipientName }}</p>
           </div>
           <div>
-            <label class="block text-sm text-text-secondary mb-1">Email</label>
-            <input
-              v-model="form.recipientEmail"
-              type="email"
-              placeholder="請輸入 Email"
-              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors"
-              :class="{ 'border-red-400': errors.recipientEmail }"
-            />
+            <label class="block text-sm text-text-secondary mb-1">電子郵件</label>
+            <input v-model="form.recipientEmail" type="email" placeholder="name@example.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors" :class="{ 'border-red-400': errors.recipientEmail }">
             <p v-if="errors.recipientEmail" class="text-red-500 text-xs mt-1">{{ errors.recipientEmail }}</p>
           </div>
           <div>
             <label class="block text-sm text-text-secondary mb-1">收件地址</label>
-            <input
-              v-model="form.recipientAddress"
-              type="text"
-              placeholder="請輸入收件地址"
-              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors"
-              :class="{ 'border-red-400': errors.recipientAddress }"
-            />
+            <input v-model="form.recipientAddress" type="text" placeholder="請輸入完整配送地址" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors" :class="{ 'border-red-400': errors.recipientAddress }">
             <p v-if="errors.recipientAddress" class="text-red-500 text-xs mt-1">{{ errors.recipientAddress }}</p>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Right: Summary -->
-    <div class="lg:w-2/5">
-      <div class="bg-white rounded-2xl shadow-sm p-6 sticky top-24">
-        <h2 class="font-medium text-text-primary mb-4">訂單摘要</h2>
-        <div class="space-y-3 mb-4">
-          <div v-for="item in cartItems" :key="item.id" class="flex justify-between text-sm">
-            <span class="text-text-secondary">{{ item.product.name }} x {{ item.quantity }}</span>
-            <span class="text-text-primary">NT$ {{ (item.product.price * item.quantity).toLocaleString() }}</span>
-          </div>
+      <div class="payment-method">
+        <h2>付款方式</h2>
+        <div class="ecpay-option">
+          <span class="ecpay-radio" aria-hidden="true"></span>
+          <div><strong>綠界 ECPay 安全付款</strong><small>支援信用卡及綠界提供的付款方式</small></div>
+          <span>安全加密</span>
         </div>
-        <div class="border-t border-gray-100 pt-3 flex justify-between items-center">
-          <span class="font-bold text-text-primary">總計</span>
-          <span class="font-bold text-xl text-rose-primary">
-            NT$ {{ cartTotal.toLocaleString() }}
-          </span>
-        </div>
-        <button
-          @click="submitOrder"
-          :disabled="submitting"
-          class="w-full mt-4 bg-rose-primary text-white py-3 rounded-full text-sm font-medium hover:bg-rose-dark transition-colors disabled:opacity-50"
-        >
-          {{ submitting ? '處理中...' : '確認送出訂單' }}
-        </button>
       </div>
-    </div>
+    </section>
+
+    <aside class="checkout-summary">
+      <h2>訂單摘要</h2>
+      <div class="checkout-items">
+        <div v-for="item in cartItems" :key="item.id" class="checkout-item">
+          <img :src="item.product.image_url || 'https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=160'" :alt="item.product.name">
+          <div><strong>{{ item.product.name }}</strong><small>數量 {{ item.quantity }}</small></div>
+          <span>NT$ {{ (item.product.price * item.quantity).toLocaleString() }}</span>
+        </div>
+      </div>
+      <div class="checkout-total"><span>總計</span><strong>NT$ {{ cartTotal.toLocaleString() }}</strong></div>
+      <button @click="submitOrder" :disabled="submitting" class="w-full bg-rose-primary text-white py-3 text-sm font-medium hover:bg-rose-dark transition-colors disabled:opacity-50">
+        {{ submitting ? '建立訂單中...' : '建立訂單並繼續付款' }}
+      </button>
+      <p class="checkout-disclaimer">建立後將前往訂單頁啟動綠界付款，付款結果以後端查詢確認為準。</p>
+    </aside>
   </div>
 </div>
