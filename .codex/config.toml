@@ -4,3 +4,11 @@ sandbox_mode = "workspace-write"
 [sandbox_workspace_write]
 writable_roots = ["~/.npm"]
 network_access = true
+
+[mcp_servers.playwright]
+command = "C:\\Program Files\\nodejs\\node.exe"
+args = [
+  "C:\\Users\\User\\hexschool\\ai-adv-homework\\2026-ai-adv-homework-course01\\node_modules\\@playwright\\mcp\\cli.js",
+  "--isolated",
+  "--caps=devtools",
+]

@@ -26,7 +26,12 @@ Thumbs.db
 .idea/
 
 # Local agent skills and reference files
-.agents/
+# 預設忽略所有本機 Agent 資料，只追蹤本次作業需要的 E2E Skill。
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/e2e-payment-test/
+!.agents/skills/e2e-payment-test/**
 
 # Logs
 *.log
@@ -34,6 +39,9 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
+# Playwright MCP runtime snapshots
+.playwright-mcp/
 
 # Temp files
 *.tmp
