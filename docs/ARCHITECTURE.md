@@ -131,12 +131,15 @@ flowchart LR
 | `tests/ecpayService.test.js` | 4 案例：官方 CheckMacValue 向量、竄改金額拒絕、staging AIO 表單欄位、本機通知路由 |
 | `tests/shipping.test.js` | 21 案例：運費常數、基本運費、超商取貨、1,499／1,500 免運邊界、偏遠與急件附加費、多項附加費疊加、滿額免運與附加費同時成立 |
 | `tests/paymentScheduler.test.js` | 5 案例：建立付款表單、重複付款拒絕、驗簽入帳、金額不符、403 暫停與對外節流 |
+| `tests/integration/order-flow.test.js` | 2 案例：完整訂單資料流與資料庫交易失敗回滾；使用唯一暫存 SQLite 並自行清理 |
+| `tests/e2e/payment-flow.e2e.js` | Playwright 操作既有 3001 服務與綠界 staging，驗證網路 ATM 測試付款、返回站點及 paid 狀態 |
+| `scripts/generate-postman.js` | 將最新 `openapi.json` 轉為具變數、JWT 保存與 Bearer Token 的 Postman Collection |
 
 ## 啟動與請求生命週期
 
 1. `npm start` 先以 Tailwind CLI 將 input.css 編成 output.css；只有成功才執行 server.js。
 2. server.js 頂層 require app.js；app.js 先 `dotenv.config()`。預設讀目前工作目錄 `.env`，因此命令應在專案根目錄執行。
-3. require database.js 立即開啟 `path.join(__dirname, '..', 'database.sqlite')`，啟用 WAL、foreign_keys，建表、seed 管理員，再 seed 商品。
+3. require database.js 立即開啟 `DATABASE_PATH` 指定的 SQLite；未設定時才使用 `path.join(__dirname, '..', 'database.sqlite')`。接著啟用 WAL、foreign_keys，建表、seed 管理員，再 seed 商品。
 4. 建立 Express app，設定 EJS 與絕對 views 路徑。
 5. 先掛 `express.static(public)`；成功命中的靜態請求不必經過後面的 CORS、body parser 或 session middleware。
 6. 全域 middleware 依序為 CORS → express.json → express.urlencoded({ extended:false }) → sessionMiddleware。CORS origin 使用 FRONTEND_URL 或 localhost:3001，未啟用 credentials。
@@ -343,6 +346,6 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 
 現行付款流程：本人登入 → POST `/:id/payment` 建立唯一待確認交易並取得 AIO 表單欄位（`ChoosePayment=ALL`）→ 瀏覽器同頁 POST 至綠界測試付款頁，並經 ClientBackURL 回到訂單頁 → 後端於付款後 10 分鐘主動查詢並驗證 CheckMacValue、MerchantID、MerchantTradeNo 與金額 → 才更新為 paid 或已確認 failed。背景排程每 30 秒掃描到期資料，但單一交易至少間隔 10 分鐘，403 會持久暫停 30 分鐘。表單顯示所有付款方式；ATM、超商、條碼與 BNPL 等離線方式未完成本機端到端驗收。
 
-失敗付款不回補庫存、不重開購物車；只有綠界回傳 `TradeStatus=10200095` 的已驗證失敗可建立新交易。瀏覽器 query／返回網址不改資料庫。本機 `POST /api/ecpay/notify` 直接回覆 `1|OK`，不驗簽或更新訂單；付款狀態仍只由後端主動查詢更新。僅支援 ECPay staging，尚未完成真實端到端驗收。
+失敗付款不回補庫存、不重開購物車；只有綠界回傳 `TradeStatus=10200095` 的已驗證失敗可建立新交易。瀏覽器 query／返回網址不直接改資料庫。本機 `POST /api/ecpay/notify` 直接回覆 `1|OK`，不驗簽或更新訂單；付款狀態仍只由後端主動查詢更新。僅支援 ECPay staging；Playwright 已完成網路 ATM／台灣土地銀行的真實 E2E 驗收，其他付款方式尚未逐一驗證。
 
 真正外部整合限瀏覽器載入 Vue（unpkg）、Google Fonts 與 Unsplash 圖片。後端不代理圖片、不儲存上傳、不驗證圖片 URL 內容；新增商品只存 image_url。網站的品牌好評、配送與月配文案不代表有評論、物流或訂閱服務。

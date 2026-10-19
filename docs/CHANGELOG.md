@@ -14,6 +14,9 @@
 - 2026-10-19 將運費整合至建單流程：`orders` 表新增 `subtotal`、`shipping_fee`、`delivery_type`、`is_remote_area`、`is_same_day_express` 欄位，既有資料庫透過 `PRAGMA table_info` 檢查後可重複執行 `ALTER TABLE` 補欄位，既有資料採預設值不受影響；`POST /api/orders` 新增選填 `deliveryType`、`isRemoteArea`、`isSameDayExpress`，`total_amount` 變更為商品小計＋運費，建單與訂單詳情回應皆回傳運費欄位。
 - 2026-10-19 新增 `tests/shipping.test.js`，21 個單元測試涵蓋運費常數、宅配基本運費、超商取貨、1,499／1,500 免運邊界、偏遠地區、當日急件、多項附加費疊加、滿額免運與附加費同時成立；`tests/orders.test.js` 補上建單回應的運費與總額斷言。
 - 2026-10-19 重新產生 `openapi.json`，`POST /api/orders` 與訂單詳情回應新增運費相關欄位與請求選填欄位。
+- 2026-10-19 新增訂單完整 Integration Test，使用唯一暫存 SQLite 驗證會員、商品、購物車、配送建單、訂單與明細寫入、運費與總額、庫存扣除、清空購物車，以及資料庫交易失敗時完整回滾；新增 `test:unit` 與 `test:integration` 指令。完整流程與獨立驗收證據見 [計畫紀錄](./plans/archive/2026-10-19-complete-test-flow.md)。
+- 2026-10-19 新增 Playwright 綠界付款 E2E，直接使用既有 3001 服務完成網路 ATM／台灣土地銀行測試付款、返回商店、UI 與 API paid 驗證，並輸出成功截圖；新增 `test:e2e` 指令。此流程會在目前服務資料庫新增真實測試資料。
+- 2026-10-19 新增 OpenAPI → Postman Collection 產生器與 `postman` 指令；Collection 使用 `{{baseUrl}}` 並提供 `baseUrl`、`token`、`sessionId`，登入後自動保存 JWT，受保護 API 使用 Bearer Token。Collection 與 E2E 截圖皆為可重建產物，不納入版本控制。
 - 2026-09-29 新增 `src/services/orderService.js`，集中處理會員購物車建單、明細快照、庫存扣除與清空購物車的單一交易；既有 `/api/orders` 回應契約維持不變。實作與驗證見 [計畫紀錄](./plans/archive/2026-09-29-cart-badge-order-service.md)。
 - 2026-09-17 新增本機 `POST /api/ecpay/notify` 占位路由，回覆純文字 `1|OK`；通知內容不參與付款狀態更新。實作與限制見 [計畫紀錄](./plans/archive/2026-09-17-ecpay-feedback-alignment.md)。
 - 2026-09-13 新增 ECPay staging 付款流程：建立 AIO 表單、保存 `payment_attempts` 與排程狀態、以 QueryTradeInfo/V5 查詢並驗證 CheckMacValue、商店編號、交易編號與訂單金額。

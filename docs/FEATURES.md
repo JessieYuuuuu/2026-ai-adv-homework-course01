@@ -169,7 +169,7 @@ JWT 必要。用訂單 id 和 req.user.userId 同時查詢；查無或他人訂�
 
 ### POST /api/orders/:id/payment
 
-不需要 body。後端先檢查 staging 設定，再以已保存的 `orders.total_amount`、訂單明細快照建立一筆 `payment_attempts`，回傳 ECPay AIO 的 `action`、隱藏欄位和 `payment` 摘要。前端將欄位組成同頁 POST 表單；`ChoosePayment=ALL` 讓測試付款頁顯示所有付款方式。ATM、超商、條碼與 BNPL 等離線付款尚未完成本機端到端驗收；不能把顯示選項視為已完整支援付款確認。
+不需要 body。後端先檢查 staging 設定，再以已保存的 `orders.total_amount`、訂單明細快照建立一筆 `payment_attempts`，回傳 ECPay AIO 的 `action`、隱藏欄位和 `payment` 摘要。前端將欄位組成同頁 POST 表單；`ChoosePayment=ALL` 讓測試付款頁顯示所有付款方式。Playwright 已完成網路 ATM／台灣土地銀行的本機端到端驗收；超商、條碼與 BNPL 等其他付款方式尚未逐一驗證，不能把顯示選項視為全部方式都已完整支援付款確認。
 
 ### POST /api/ecpay/notify
 

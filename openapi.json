@@ -1486,6 +1486,17 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "訂單 ID"
+          }
+        ],
         "responses": {
           "200": {
             "description": "回傳 action 與表單欄位"
@@ -1504,6 +1515,17 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "訂單 ID"
+          }
+        ],
         "responses": {
           "200": {
             "description": "目前付款狀態或下次可查時間"
@@ -1520,6 +1542,17 @@
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "訂單 ID"
           }
         ],
         "responses": {

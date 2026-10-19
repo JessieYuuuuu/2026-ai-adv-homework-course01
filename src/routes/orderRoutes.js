@@ -318,6 +318,12 @@ router.get('/:id', (req, res) => {
  *     summary: 建立綠界測試付款表單（顯示可用付款方式）
  *     tags: [Orders]
  *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: 訂單 ID
  *     responses:
  *       200: { description: 回傳 action 與表單欄位 }
  */
@@ -364,6 +370,12 @@ router.post('/:id/payment', (req, res) => {
  *     summary: 依排程主動查詢綠界付款結果
  *     tags: [Orders]
  *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: 訂單 ID
  *     responses:
  *       200: { description: 目前付款狀態或下次可查時間 }
  */
@@ -384,6 +396,12 @@ router.post('/:id/payment/verify', async (req, res) => {
  *     summary: 付款流程返回後立即由後端查詢一次綠界結果
  *     tags: [Orders]
  *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *         description: 訂單 ID
  *     responses:
  *       200: { description: 查詢結果；返回本身不會更新付款狀態 }
  */
