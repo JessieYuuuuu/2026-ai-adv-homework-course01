@@ -10,7 +10,14 @@
 
 ### Added
 
-- 2026-10-05 使用 `frontend-design` skill 與 Pencil MCP 建立桌面／手機版黑金設計稿，涵蓋首頁、商品詳情、結帳、訂單建立及付款完成；7 張固定設計快照與說明保存於 `docs/design/`。
+- 2026-10-19 新增 `src/utils/shipping.js` 獨立配送費用計算模組：宅配基本運費 120 元、超商取貨 60 元（不屬於基本運費）、商品小計滿 1,500 元免基本運費、偏遠地區加收 200 元、當日急件加收 250 元；附加費可疊加且不受滿額免運影響。模組為純函數，可獨立單元測試。實作與驗證見 [計畫紀錄](./plans/archive/2026-10-19-shipping-fee.md)。
+- 2026-10-19 將運費整合至建單流程：`orders` 表新增 `subtotal`、`shipping_fee`、`delivery_type`、`is_remote_area`、`is_same_day_express` 欄位，既有資料庫透過 `PRAGMA table_info` 檢查後可重複執行 `ALTER TABLE` 補欄位，既有資料採預設值不受影響；`POST /api/orders` 新增選填 `deliveryType`、`isRemoteArea`、`isSameDayExpress`，`total_amount` 變更為商品小計＋運費，建單與訂單詳情回應皆回傳運費欄位。
+- 2026-10-19 新增 `tests/shipping.test.js`，21 個單元測試涵蓋運費常數、宅配基本運費、超商取貨、1,499／1,500 免運邊界、偏遠地區、當日急件、多項附加費疊加、滿額免運與附加費同時成立；`tests/orders.test.js` 補上建單回應的運費與總額斷言。
+- 2026-10-19 重新產生 `openapi.json`，`POST /api/orders` 與訂單詳情回應新增運費相關欄位與請求選填欄位。
+- 2026-10-19 新增訂單完整 Integration Test，使用唯一暫存 SQLite 驗證會員、商品、購物車、配送建單、訂單與明細寫入、運費與總額、庫存扣除、清空購物車，以及資料庫交易失敗時完整回滾；新增 `test:unit` 與 `test:integration` 指令。完整流程與獨立驗收證據見 [計畫紀錄](./plans/archive/2026-10-19-complete-test-flow.md)。
+- 2026-10-19 新增 Playwright 綠界付款 E2E，直接使用既有 3001 服務完成網路 ATM／台灣土地銀行測試付款、返回商店、UI 與 API paid 驗證，並輸出成功截圖；新增 `test:e2e` 指令。此流程會在目前服務資料庫新增真實測試資料。
+- 2026-10-19 新增 OpenAPI → Postman Collection 產生器與 `postman` 指令；Collection 使用 `{{baseUrl}}` 並提供 `baseUrl`、`token`、`sessionId`，登入後自動保存 JWT，受保護 API 使用 Bearer Token。Collection 與 E2E 截圖皆為可重建產物，不納入版本控制。
+- 2026-10-19 新增 `.github/workflows/test.yml`，在 push、pull request 與手動觸發時使用 Node.js 22、`npm ci`，並以兩個獨立步驟執行 Unit Test 與 Integration Test；不執行 Playwright E2E，也不啟動額外服務。本機 YAML 驗證及兩條測試指令已通過，GitHub 遠端狀態待提交並推送後確認。
 - 2026-09-29 新增 `src/services/orderService.js`，集中處理會員購物車建單、明細快照、庫存扣除與清空購物車的單一交易；既有 `/api/orders` 回應契約維持不變。實作與驗證見 [計畫紀錄](./plans/archive/2026-09-29-cart-badge-order-service.md)。
 - 2026-09-17 新增本機 `POST /api/ecpay/notify` 占位路由，回覆純文字 `1|OK`；通知內容不參與付款狀態更新。實作與限制見 [計畫紀錄](./plans/archive/2026-09-17-ecpay-feedback-alignment.md)。
 - 2026-09-13 新增 ECPay staging 付款流程：建立 AIO 表單、保存 `payment_attempts` 與排程狀態、以 QueryTradeInfo/V5 查詢並驗證 CheckMacValue、商店編號、交易編號與訂單金額。
@@ -19,6 +26,7 @@
 
 ### Changed
 
+- 2026-10-19 依前台黑金花藝設計系統重整結帳頁配送區塊：配送選項改為整列可點選卡片、固定呈現各項費率，新增宅配滿額免運進度、附加配送服務說明，以及商品小計／運費／應付總額的摘要層級；桌面與手機版皆完成視覺檢查。
 - 2026-10-05 將消費者前台視覺重設為「黑金高級花藝會所」：首頁採精品型錄式花藝影像與黑金品牌字體，並統一導覽、頁尾、商品詳情、購物車、結帳、訂單確認、付款完成、登入與空狀態的曜石黑、香檳金及響應式版面。管理後台不在本次範圍，API 與資料契約未變更；實作與驗證見 [計畫紀錄](./plans/archive/2026-10-05-storefront-redesign.md)。
 - 2026-09-29 將訂單建立 route 的交易邏輯移至 service；購物車 badge 在初次載入、加購、改量與刪除後都重新同步目前項目數，避免重複加購造成數字漂移。
 - 2026-09-17 將文件與測試對齊表單實際送出的 `ChoosePayment=ALL`，並將 ReturnURL 指向本機占位路由；付款結果仍由後端查詢驗簽確認。統一 `docs/` 的繁體字用法。

@@ -42,6 +42,11 @@ describe('Orders API', () => {
     expect(res.body.data).toHaveProperty('items');
     expect(Array.isArray(res.body.data.items)).toBe(true);
 
+    // 運費與訂單總額正確：total_amount = subtotal + shipping_fee
+    expect(res.body.data).toHaveProperty('subtotal');
+    expect(res.body.data).toHaveProperty('shipping_fee');
+    expect(res.body.data.total_amount).toBe(res.body.data.subtotal + res.body.data.shipping_fee);
+
     orderId = res.body.data.id;
   });
 

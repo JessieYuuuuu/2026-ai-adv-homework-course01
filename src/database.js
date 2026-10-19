@@ -51,6 +51,11 @@ function initializeDatabase() {
       recipient_email TEXT NOT NULL,
       recipient_address TEXT NOT NULL,
       total_amount INTEGER NOT NULL,
+      subtotal INTEGER NOT NULL DEFAULT 0,
+      shipping_fee INTEGER NOT NULL DEFAULT 0,
+      delivery_type TEXT NOT NULL DEFAULT 'home_delivery',
+      is_remote_area INTEGER NOT NULL DEFAULT 0 CHECK(is_remote_area IN (0, 1)),
+      is_same_day_express INTEGER NOT NULL DEFAULT 0 CHECK(is_same_day_express IN (0, 1)),
       status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'paid', 'failed')),
 
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -105,6 +110,41 @@ function initializeDatabase() {
   // Seed data
   seedAdminUser();
   seedProducts();
+
+  // 既有資料庫欄位升級：orders 表新增運費相關欄位。
+  // 可重複執行，只有缺少的欄位才會補上，既有資料採用預設值，不會覆蓋或刪除資料。
+  ensureOrdersShippingColumns();
+}
+
+function ensureOrdersShippingColumns() {
+  const existingColumns = new Set(
+    db.prepare("PRAGMA table_info('orders')").all().map((row) => row.name)
+  );
+  const alterStatements = [];
+  if (!existingColumns.has('subtotal')) {
+    alterStatements.push('ALTER TABLE orders ADD COLUMN subtotal INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!existingColumns.has('shipping_fee')) {
+    alterStatements.push('ALTER TABLE orders ADD COLUMN shipping_fee INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!existingColumns.has('delivery_type')) {
+    alterStatements.push("ALTER TABLE orders ADD COLUMN delivery_type TEXT NOT NULL DEFAULT 'home_delivery'");
+  }
+  if (!existingColumns.has('is_remote_area')) {
+    alterStatements.push('ALTER TABLE orders ADD COLUMN is_remote_area INTEGER NOT NULL DEFAULT 0 CHECK(is_remote_area IN (0, 1))');
+  }
+  if (!existingColumns.has('is_same_day_express')) {
+    alterStatements.push('ALTER TABLE orders ADD COLUMN is_same_day_express INTEGER NOT NULL DEFAULT 0 CHECK(is_same_day_express IN (0, 1))');
+  }
+
+  if (alterStatements.length > 0) {
+    const migration = db.transaction(() => {
+      for (const sql of alterStatements) {
+        db.exec(sql);
+      }
+    });
+    migration();
+  }
 }
 
 function seedAdminUser() {

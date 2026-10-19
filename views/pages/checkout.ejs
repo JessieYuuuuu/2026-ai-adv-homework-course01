@@ -40,6 +40,63 @@
           <span>安全加密</span>
         </div>
       </div>
+
+      <div class="delivery-option">
+        <div class="delivery-heading">
+          <h2>配送方式</h2>
+          <p>選擇最適合您的收花方式</p>
+        </div>
+        <div class="delivery-choices">
+          <label class="delivery-choice" :class="{ 'is-selected': deliveryType === 'home_delivery' }">
+            <input type="radio" name="deliveryType" value="home_delivery" v-model="deliveryType">
+            <span class="delivery-choice__mark" aria-hidden="true">宅</span>
+            <span class="delivery-choice__copy">
+              <strong>宅配到府</strong>
+              <small>送達您填寫的收件地址</small>
+            </span>
+            <span class="delivery-choice__price">
+              <del v-if="freeBasicShipping">NT$ {{ homeDeliveryFee.toLocaleString() }}</del>
+              <strong>{{ freeBasicShipping ? '滿額免運' : 'NT$ ' + homeDeliveryFee.toLocaleString() }}</strong>
+            </span>
+          </label>
+          <label class="delivery-choice" :class="{ 'is-selected': deliveryType === 'convenience_store' }">
+            <input type="radio" name="deliveryType" value="convenience_store" v-model="deliveryType">
+            <span class="delivery-choice__mark" aria-hidden="true">店</span>
+            <span class="delivery-choice__copy">
+              <strong>超商取貨</strong>
+              <small>送達指定便利商店門市</small>
+            </span>
+            <span class="delivery-choice__price">
+              <strong>NT$ {{ convenienceStoreFee.toLocaleString() }}</strong>
+            </span>
+          </label>
+        </div>
+
+        <div v-if="deliveryType === 'home_delivery'" class="shipping-threshold" :class="{ 'is-reached': freeBasicShipping }">
+          <div class="shipping-threshold__copy">
+            <span>{{ freeBasicShipping ? '已享宅配基本運費優惠' : '再選購 NT$ ' + freeShippingRemaining.toLocaleString() + ' 即享宅配免運' }}</span>
+            <strong>滿 NT$ {{ freeShippingThreshold.toLocaleString() }}</strong>
+          </div>
+          <span class="shipping-threshold__track" aria-hidden="true"><i :style="{ width: shippingProgress + '%' }"></i></span>
+        </div>
+        <p v-else class="shipping-threshold shipping-threshold--fixed">超商取貨為固定運費，不適用宅配滿額免運。</p>
+
+        <div class="delivery-addons">
+          <h3>附加配送服務</h3>
+          <label class="addon-checkbox" :class="{ 'is-selected': isRemoteArea }">
+            <input type="checkbox" v-model="isRemoteArea">
+            <span class="addon-checkbox__indicator" aria-hidden="true"></span>
+            <span class="addon-checkbox__copy"><strong>偏遠地區配送</strong><small>離島及指定偏遠區域適用</small></span>
+            <span class="addon-checkbox__price">+ NT$ {{ remoteAreaSurcharge.toLocaleString() }}</span>
+          </label>
+          <label class="addon-checkbox" :class="{ 'is-selected': isSameDayExpress }">
+            <input type="checkbox" v-model="isSameDayExpress">
+            <span class="addon-checkbox__indicator" aria-hidden="true"></span>
+            <span class="addon-checkbox__copy"><strong>當日急件</strong><small>下單後將由專人確認可配送時段</small></span>
+            <span class="addon-checkbox__price">+ NT$ {{ sameDayExpressSurcharge.toLocaleString() }}</span>
+          </label>
+        </div>
+      </div>
     </section>
 
     <aside class="checkout-summary">
@@ -51,7 +108,11 @@
           <span>NT$ {{ (item.product.price * item.quantity).toLocaleString() }}</span>
         </div>
       </div>
-      <div class="checkout-total"><span>總計</span><strong>NT$ {{ cartTotal.toLocaleString() }}</strong></div>
+      <div class="checkout-total">
+        <div class="total-row"><span>商品小計</span><span>NT$ {{ cartTotal.toLocaleString() }}</span></div>
+        <div class="total-row"><span>運費</span><span>NT$ {{ shippingFee.toLocaleString() }}</span></div>
+        <div class="total-row is-final"><span>應付總額</span><strong>NT$ {{ orderTotal.toLocaleString() }}</strong></div>
+      </div>
       <button @click="submitOrder" :disabled="submitting" class="w-full bg-rose-primary text-white py-3 text-sm font-medium hover:bg-rose-dark transition-colors disabled:opacity-50">
         {{ submitting ? '建立訂單中...' : '建立訂單並繼續付款' }}
       </button>

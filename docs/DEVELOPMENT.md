@@ -2,7 +2,7 @@
 
 ## 規範適用範圍
 
-本文件將「原始碼現況」與「新增程式應遵循的規範」分開說明。現況沒有 ESLint、Prettier、TypeScript、migration 或 CI 設定，不能將文件建議當成已由工具強制執行。開始修改前先讀 [AGENTS.md](../AGENTS.md)、對應功能路由及頁面、[ARCHITECTURE.md](./ARCHITECTURE.md) 的資料不變條件；API 可觀察行為以 [FEATURES.md](./FEATURES.md) 為基準。
+本文件將「原始碼現況」與「新增程式應遵循的規範」分開說明。現況沒有 ESLint、Prettier、TypeScript 或 migration；GitHub Actions 只自動執行 Shipping Unit Test 與訂單 Integration Test，不能將其他文件建議當成已由工具強制執行。開始修改前先讀 [AGENTS.md](../AGENTS.md)、對應功能路由及頁面、[ARCHITECTURE.md](./ARCHITECTURE.md) 的資料不變條件；API 可觀察行為以 [FEATURES.md](./FEATURES.md) 為基準。
 
 新功能應先明確列出會影響哪些模組：例如運費影響 cart／checkout 畫面、orders.total_amount、付款金額、訂單明細及測試；訪客車合併影響 auth、cart owner、資料約束及登入導頁。不能只在單一畫面或 route 補欄位就宣告整合完成。
 
@@ -57,7 +57,7 @@ dotenv 在 app.js 開頭載入；已存在程序環境值預設不被 `.env` 覆
 | ECPAY_HASH_IV | 產生與驗證 CheckMacValue | ECPay 付款時必要 | 僅留在後端環境；不得交給瀏覽器或寫入日誌 |
 | ECPAY_ENV | 限制 ECPay 執行環境 | ECPay 付款時必要 | 必須精確為 `staging`，其他值明確拒絕，避免誤連正式環境 |
 
-沒有 DATABASE_URL／DB_PATH；設定這些變數不會切換資料庫。所有執行環境都由 src/database.js 定位同一根目錄 database.sqlite。測試 helper 使用固定管理員帳密，與自訂 ADMIN_* 可能不相容。變更 JWT_SECRET 會使以舊 secret 簽出的 JWT 驗證失敗，但登出只刪本機資料。
+沒有 DATABASE_URL／DB_PATH；設定這些變數不會切換資料庫。`src/database.js` 預設使用根目錄 `database.sqlite`，但可透過 `DATABASE_PATH` 指向測試專用檔案；Vitest 與 Integration Test 都會在載入 app 前指定獨立暫存 SQLite，Integration Test 並會在結束後清除自己的 DB、WAL 與 SHM。E2E 直接操作已啟動站點，因此會寫入目前站點所使用的資料庫。測試 helper 使用固定管理員帳密，與自訂 ADMIN_* 可能不相容。變更 JWT_SECRET 會使以舊 secret 簽出的 JWT 驗證失敗，但登出只刪本機資料。
 
 新增變數時：先定義實際讀取位置、是否必填與缺值失敗方式；更新 `.env.example`、本表和快速開始；測試用臨時值覆蓋；不得提交本機 `.env`。第三方設定必須有對應程式與驗證，不能只新增變數就標記整合完成。
 

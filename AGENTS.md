@@ -18,9 +18,9 @@
 | `npm run dev:css` | Tailwind CLI 監看 `public/css/input.css` 與樣式來源 |
 | `npm run css:build` | 產生壓縮的 `public/css/output.css` |
 | `npm run openapi` | 從路由註解產生根目錄 `openapi.json`，不啟動 Swagger UI |
-| `npm test` | 執行 Vitest／Supertest；會修改同一份 `database.sqlite` |
+| `npm test` | 執行 Vitest／Supertest；測試設定會使用獨立暫存 SQLite，不修改根目錄 `database.sqlite` |
 
-啟動前設定 `JWT_SECRET`；`server.js` 直接執行時缺值會退出，但資料庫初始化發生在檢查之前。測試應在可丟棄副本執行，不能把 `NODE_ENV=test` 當成資料庫隔離。
+啟動前設定 `JWT_SECRET`；`server.js` 直接執行時缺值會退出，但資料庫初始化發生在檢查之前。Vitest 由 `tests/setup.js` 設定獨立暫存資料庫，Integration Test 另建並清除自己的 SQLite；E2E 則刻意操作已啟動站點，會新增真實測試訂單並扣除庫存。
 
 ## 關鍵規則
 

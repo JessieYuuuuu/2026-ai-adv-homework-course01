@@ -239,6 +239,48 @@ a, button { -webkit-tap-highlight-color: transparent; }
 .checkout-section > .space-y-4 { display: grid; gap: 1.1rem; }
 .checkout-summary { top: 6rem; padding: 1.5rem; }
 
+/* Checkout delivery selector */
+.delivery-option { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--line); }
+.delivery-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1.15rem; }
+.delivery-heading h2 { margin: 0; font-family: "Noto Serif TC", serif; font-size: 1.35rem; font-weight: 500; }
+.delivery-heading p { margin: 0; color: var(--muted); font-size: .72rem; }
+.delivery-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.delivery-choice { position: relative; display: grid; grid-template-columns: 2.45rem minmax(0, 1fr) auto; align-items: center; gap: .85rem; min-height: 5.5rem; padding: 1rem; border: 1px solid var(--line-soft); background: rgba(23, 22, 18, .58); cursor: pointer; transition: border-color .2s ease, background-color .2s ease; }
+.delivery-choice:hover { border-color: rgba(200, 169, 106, .5); }
+.delivery-choice.is-selected { border-color: var(--gold); background: var(--charcoal); box-shadow: inset 0 -2px 0 rgba(200, 169, 106, .22); }
+.delivery-choice > input, .addon-checkbox > input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.delivery-choice:has(input:focus-visible), .addon-checkbox:has(input:focus-visible) { outline: 2px solid var(--gold); outline-offset: 3px; }
+.delivery-choice__mark { display: grid; place-items: center; width: 2.45rem; height: 2.45rem; border: 1px solid var(--line); border-radius: 50%; color: var(--ash); font-family: "Noto Serif TC", serif; font-size: .78rem; transition: color .2s ease, border-color .2s ease, background-color .2s ease; }
+.delivery-choice.is-selected .delivery-choice__mark { color: var(--black); border-color: var(--gold); background: var(--gold); }
+.delivery-choice__copy { display: grid; gap: .3rem; min-width: 0; }
+.delivery-choice__copy strong { color: var(--ivory); font-family: "Noto Serif TC", serif; font-size: .92rem; font-weight: 500; }
+.delivery-choice__copy small { color: var(--muted); font-size: .66rem; line-height: 1.5; }
+.delivery-choice__price { display: grid; justify-items: end; gap: .15rem; color: var(--gold); font-family: "Cormorant Garamond", serif; white-space: nowrap; }
+.delivery-choice__price strong { font-size: 1.02rem; font-weight: 600; }
+.delivery-choice__price del { color: var(--muted); font-size: .7rem; }
+.shipping-threshold { display: grid; gap: .65rem; margin: .75rem 0 0; padding: .8rem 1rem; border-left: 2px solid var(--gold-deep); background: rgba(200, 169, 106, .055); }
+.shipping-threshold__copy { display: flex; justify-content: space-between; gap: 1rem; color: var(--ash); font-size: .69rem; line-height: 1.5; }
+.shipping-threshold__copy strong { color: var(--gold); font-weight: 500; white-space: nowrap; }
+.shipping-threshold__track { display: block; height: 2px; overflow: hidden; background: rgba(242, 238, 229, .1); }
+.shipping-threshold__track i { display: block; height: 100%; background: var(--gold); transition: width .3s ease; }
+.shipping-threshold.is-reached { border-left-color: var(--gold); }
+.shipping-threshold--fixed { display: block; color: var(--muted); font-size: .69rem; line-height: 1.6; }
+.delivery-addons { margin-top: 1.6rem; border-top: 1px solid var(--line-soft); }
+.delivery-addons h3 { margin: 1.25rem 0 .45rem; color: var(--ash); font-size: .76rem; font-weight: 500; }
+.addon-checkbox { position: relative; display: grid; grid-template-columns: 1rem minmax(0, 1fr) auto; align-items: center; gap: .8rem; min-height: 3.8rem; padding: .7rem .25rem; border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+.addon-checkbox__indicator { position: relative; width: 1rem; height: 1rem; border: 1px solid rgba(242, 238, 229, .35); }
+.addon-checkbox.is-selected .addon-checkbox__indicator { border-color: var(--gold); background: var(--gold); }
+.addon-checkbox.is-selected .addon-checkbox__indicator::after { content: ""; position: absolute; left: .29rem; top: .08rem; width: .28rem; height: .55rem; border: solid var(--black); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.addon-checkbox__copy { display: grid; gap: .2rem; }
+.addon-checkbox__copy strong { color: var(--ivory); font-size: .78rem; font-weight: 500; }
+.addon-checkbox__copy small { color: var(--muted); font-size: .64rem; line-height: 1.45; }
+.addon-checkbox__price { color: var(--gold); font-family: "Cormorant Garamond", serif; font-size: .88rem; white-space: nowrap; }
+.checkout-total { display: grid; align-items: stretch; gap: .7rem; }
+.total-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; color: var(--muted); font-size: .76rem; }
+.total-row > span:last-child { color: var(--ash); font-family: "Cormorant Garamond", serif; font-size: .95rem; }
+.total-row.is-final { margin-top: .25rem; padding-top: .9rem; border-top: 1px solid var(--line-soft); color: var(--ivory); }
+.total-row.is-final strong { font-size: 1.7rem; }
+
 .order-confirmation, .payment-complete { display: flex; flex-direction: column; align-items: center; gap: 1.25rem; padding: 3rem var(--page-gutter) 4.5rem; text-align: center; }
 .order-state-seal, .payment-complete__seal { display: grid; place-items: center; width: 4.75rem; height: 4.75rem; border: 1px solid var(--gold); border-radius: 50%; color: var(--gold); font-size: 1.9rem; }
 .payment-complete__seal { color: var(--black); background: var(--gold); }
@@ -309,6 +351,10 @@ a, button { -webkit-tap-highlight-color: transparent; }
   .checkout-item img { width: 3.6rem; height: 4.25rem; }
   .ecpay-option { grid-template-columns: auto minmax(0, 1fr); }
   .ecpay-option > span:last-child { display: none; }
+  .delivery-heading { align-items: flex-start; flex-direction: column; gap: .35rem; }
+  .delivery-choices { grid-template-columns: 1fr; }
+  .shipping-threshold__copy { align-items: flex-start; flex-direction: column; gap: .25rem; }
+  .addon-checkbox { grid-template-columns: 1rem minmax(0, 1fr) auto; }
   .order-confirmation, .payment-complete { padding: 2.5rem 1rem 3.5rem; }
   .order-detail-card, .payment-receipt { padding: 1.2rem; }
   .order-actions { width: 100%; }
