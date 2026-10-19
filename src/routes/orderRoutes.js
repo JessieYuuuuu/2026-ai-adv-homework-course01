@@ -46,6 +46,19 @@ function getLatestPayment(orderId) {
  *                 format: email
  *               recipientAddress:
  *                 type: string
+ *               deliveryType:
+ *                 type: string
+ *                 enum: [home_delivery, convenience_store]
+ *                 default: home_delivery
+ *                 description: 配送方式，home_delivery 宅配、convenience_store 超商取貨
+ *               isRemoteArea:
+ *                 type: boolean
+ *                 default: false
+ *                 description: 是否偏遠地區，成立時加收運費
+ *               isSameDayExpress:
+ *                 type: boolean
+ *                 default: false
+ *                 description: 是否當日急件，成立時加收運費
  *     responses:
  *       201:
  *         description: 訂單建立成功
@@ -61,6 +74,16 @@ function getLatestPayment(orderId) {
  *                       type: string
  *                     order_no:
  *                       type: string
+ *                     subtotal:
+ *                       type: integer
+ *                     shipping_fee:
+ *                       type: integer
+ *                     delivery_type:
+ *                       type: string
+ *                     is_remote_area:
+ *                       type: integer
+ *                     is_same_day_express:
+ *                       type: integer
  *                     total_amount:
  *                       type: integer
  *                     status:
@@ -88,6 +111,8 @@ function getLatestPayment(orderId) {
  */
 router.post('/', (req, res) => {
   const { recipientName, recipientEmail, recipientAddress } = req.body;
+  // 配送選項為選填，缺值以宅配、非偏遠、非當日急件預設，既有呼叫行為不變。
+  const { deliveryType = 'home_delivery', isRemoteArea = false, isSameDayExpress = false } = req.body;
   const userId = req.user.userId;
 
   if (!recipientName || !recipientEmail || !recipientAddress) {
@@ -109,7 +134,15 @@ router.post('/', (req, res) => {
 
   let result;
   try {
-    result = createOrderFromCart({ userId, recipientName, recipientEmail, recipientAddress });
+    result = createOrderFromCart({
+      userId,
+      recipientName,
+      recipientEmail,
+      recipientAddress,
+      deliveryType,
+      isRemoteArea,
+      isSameDayExpress,
+    });
   } catch (error) {
     if (error instanceof OrderCreationError) {
       return res.status(400).json({ data: null, error: error.code, message: error.message });
@@ -121,6 +154,11 @@ router.post('/', (req, res) => {
     data: {
       id: result.order.id,
       order_no: result.order.order_no,
+      subtotal: result.order.subtotal,
+      shipping_fee: result.order.shipping_fee,
+      delivery_type: result.order.delivery_type,
+      is_remote_area: result.order.is_remote_area,
+      is_same_day_express: result.order.is_same_day_express,
       total_amount: result.order.total_amount,
       status: result.order.status,
       items: result.orderItems,
@@ -218,6 +256,16 @@ router.get('/', (req, res) => {
  *                       type: string
  *                     recipient_address:
  *                       type: string
+ *                     subtotal:
+ *                       type: integer
+ *                     shipping_fee:
+ *                       type: integer
+ *                     delivery_type:
+ *                       type: string
+ *                     is_remote_area:
+ *                       type: integer
+ *                     is_same_day_express:
+ *                       type: integer
  *                     total_amount:
  *                       type: integer
  *                     status:

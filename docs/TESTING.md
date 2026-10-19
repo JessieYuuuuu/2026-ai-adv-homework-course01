@@ -4,9 +4,11 @@
 
 目前測試為 Vitest 2.1.9 + Supertest 7.2.2 的 API 整合測試。tests/setup.js 直接 require app，請求走真正 Express middleware、JWT、bcrypt、SQLite 與 seed，沒有 mock database 或第三方服務。Supertest 使用 app 建立測試所需 HTTP server，不需要先 `npm start` 或占用固定 3001。
 
-現有 8 份 `.test.js` 共 41 個 `it`：其中 6 份為一般 API 整合測試，另有 2 份 ECPay 簽章／表單、本機通知路由與付款排程測試。沒有 browser E2E、DOM 測試、視覺快照、真實測試卡付款、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 行為，不能推定跨 owner、交易 rollback 或所有輸入邊界已驗證。
+現有 9 份 `.test.js` 共 62 個 `it`：其中 6 份為一般 API 整合測試，2 份涵蓋 ECPay 簽章／表單、本機通知路由與付款排程，另有 1 份 Shipping 純函數單元測試。沒有 browser E2E、DOM 測試、視覺快照、真實測試卡付款、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 與配送計算行為，不能推定跨 owner、交易 rollback 或所有輸入邊界已驗證。
 
 ## 實測紀錄
+
+2026-10-19 在專案根目錄以獨立的 `DATABASE_PATH` 執行 `npm test`：9 份測試檔、62 個案例全部通過。新增的 `tests/shipping.test.js` 共 21 案例，涵蓋宅配、超商取貨、1,499／1,500 元免運邊界、偏遠地區、當日急件、附加費疊加及滿額免運與附加費同時成立；`tests/orders.test.js` 另驗證建單回應滿足 `total_amount = subtotal + shipping_fee`。測試沒有寫入專案根目錄的開發資料庫。
 
 2026-09-17 在專案根目錄執行 `npm test` 與 `npm run openapi`：8 份測試檔、41 個案例全部通過；OpenAPI 成功產生 17 個 path、22 個 method 操作。本機通知路由測試只驗證 HTTP 200 與純文字 `1|OK`，不代表綠界能連入 localhost 或通知內容已通過驗簽。測試使用唯一的暫存 SQLite 檔。
 
@@ -44,6 +46,7 @@
 | `tests/adminOrders.test.js` | 4 | 列表、pending篩選、詳情、會員403 | beforeAll登入admin並註冊會員、加1件、建立pending訂單 |
 | `tests/ecpayService.test.js` | 4 | 官方 SHA256 CheckMacValue 向量、竄改金額驗簽失敗、AIO staging 表單、本機通知路由 | 不呼叫綠界；使用固定測試商店參數與 Supertest |
 | `tests/paymentScheduler.test.js` | 5 | AIO 表單、pending 唯一約束、已簽章成功入帳、金額不符、HTTP 403 暫停與 5 秒節流 | 建單後以可注入 `fetchImpl` 模擬 QueryTradeInfo/V5；不對外發出 HTTP 請求 |
+| `tests/shipping.test.js` | 21 | 配送費率常數、宅配／超商取貨、1,499／1,500 免運邊界、偏遠與急件附加費、疊加規則及預設值 | 直接測試不依賴資料庫或 HTTP 的 `src/utils/shipping.js` 純函數 |
 
 現有多數負向案例只斷言 error 非 null，而非精確機器碼；新增測試應同時斷言 status、error 及必要副作用，避免錯誤分支完全不同卻仍通過。
 
@@ -70,42 +73,11 @@ adminOrders:   beforeAll會員加購與建單 → 詳情
 
 ## 安全且可重現的執行方式
 
-### 為何要用可丟棄副本
+### 測試資料庫隔離
 
-DB 路徑由 src/database.js 依檔案位置固定，`NODE_ENV=test` 只改 seed bcrypt cost，不會使用記憶體 DB。單純切 cwd、改 PORT 或設定 DATABASE_URL 都不會隔離已引入的原檔案。需要複製 app／src／tests 等第一方檔案到另一個目錄，再從副本啟動測試。
+`src/database.js` 優先使用 `DATABASE_PATH`，未設定才讀取專案根目錄的 `database.sqlite`。`tests/setup.js` 會在載入 app 前，為每個測試程序建立唯一的系統暫存 SQLite 路徑並寫入 `DATABASE_PATH`，因此一般執行 `npm test` 不會修改開發資料庫。若呼叫不經過 `tests/setup.js` 的自訂測試程式，應自行先設定獨立的 `DATABASE_PATH`。
 
-以下 PowerShell 範例使用已安裝的根目錄 node_modules，建立唯一名稱的專案內副本。只複製明列的第一方來源，不複製 `.env`／資料庫／`.git`；junction 只共用套件，不共用 src/database.js：
-
-```powershell
-# 在原專案根目錄執行，先完成 npm ci。
-$testSource = (Get-Location).Path
-$testCopy = Join-Path $testSource ('.tmp-test-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $testCopy | Out-Null
-$testFiles = @(
-  'app.js', 'server.js', 'src', 'tests', 'views', 'public',
-  'package.json', 'package-lock.json', 'vitest.config.js',
-  'swagger-config.js', 'generate-openapi.js'
-)
-foreach ($testFile in $testFiles) {
-  Copy-Item -LiteralPath (Join-Path $testSource $testFile) -Destination $testCopy -Recurse
-}
-New-Item -ItemType Junction -Path (Join-Path $testCopy 'node_modules') `
-  -Target (Join-Path $testSource 'node_modules') | Out-Null
-Push-Location $testCopy
-try {
-  $env:JWT_SECRET = 'flower-life-isolated-test-secret'
-  $env:NODE_ENV = 'test'
-  $env:ADMIN_EMAIL = 'admin@hexschool.com'
-  $env:ADMIN_PASSWORD = '12345678'
-  npm test
-} finally {
-  Pop-Location
-}
-```
-
-在專用測試終端跑此範例，環境變數會留在該終端直到關閉。驗證完自行檢查並清理剛建立的唯一副本，先移除 junction 本身、不要遞迴操作它指向的 node_modules；不應提供或使用泛配刪除所有 `.sqlite` 的命令。若環境不支援 junction，可在副本內 `npm ci` 安裝依賴。
-
-### 已在可丟棄環境的簡短命令
+在專案根目錄安裝依賴後，可直接執行：
 
 ```powershell
 $env:JWT_SECRET = 'flower-life-isolated-test-secret'
@@ -113,7 +85,7 @@ $env:NODE_ENV = 'test'
 $env:ADMIN_EMAIL = 'admin@hexschool.com'
 $env:ADMIN_PASSWORD = '12345678'
 npm test
-npm test -- tests/products.test.js
+npm test -- tests/shipping.test.js
 ```
 
 ```sh
@@ -221,7 +193,7 @@ describe('Cart ownership', () => {
 | 雙模式 | JWT與session同送、無效Bearer不得fallback、非Bearer+session | cart 核心非標準機制尚未完整測 |
 | 數量 | 預設1、0、負數、小數、字串、累加超庫存 | parseInt 行為易和schema分歧 |
 | 建單 | 扣庫存精確值、清車、快照不隨商品更新、任一寫入失敗回滾 | 現有空車案只間接驗證清車 |
-| 金額 | 低於500與等於500、改價後建單 | 運費只在前端，尚無一致性測試 |
+| 金額 | 各配送選項經 HTTP 建單、改價後建單、付款金額一致 | 已有 Shipping 純函數測試與建單總額加總斷言；尚缺各配送組合的 API 整合測試 |
 | 付款 | success/fail、重付、他人訂單、不合法action、失敗不補庫存 | 現有orders.test完全未呼叫pay |
 | 刪商品 | pending 409、cart FK 500、paid/failed歷史快照保留 | 現有只刪無引用的新商品 |
 | 分頁 | 0、負數、>100、末頁外、非法status被忽略 | 現有只測limit=2和pending |

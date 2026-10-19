@@ -66,6 +66,7 @@ flowchart LR
 | `src/routes/cartRoutes.js` | 私有 dualAuth、owner SQL 選擇、查詢／累加／取代數量／刪除購物車項目 |
 | `src/routes/orderRoutes.js` | 訂單 API 輸入驗證／回應、個人列表／詳情、ECPay 付款表單與本人查詢 |
 | `src/services/orderService.js` | 會員購物車建單交易、明細快照、庫存扣除與清車 |
+| `src/utils/shipping.js` | 獨立純函數配送費用模組，負責宅配／超商取貨基本運費、滿額免運、偏遠地區與當日急件附加費計算 |
 | `src/routes/ecpayRoutes.js` | 本機 ReturnURL 占位路由；回覆純文字 `1|OK`，不驗簽或更新訂單 |
 | `src/services/ecpayService.js` | 僅限 staging 的設定檢查、CheckMacValue 建立／驗證、AIO 表單與 QueryTradeInfo/V5 請求 |
 | `src/services/paymentScheduler.js` | 付款查詢節流、403 暫停、結果驗證、訂單狀態更新與 30 秒背景掃描 |
@@ -128,6 +129,7 @@ flowchart LR
 | `tests/adminProducts.test.js` | 6 案例：列表、建立、更新、刪除、普通會員／無 token 拒絕 |
 | `tests/adminOrders.test.js` | 4 案例：列表、pending 篩選、詳情、普通會員拒絕 |
 | `tests/ecpayService.test.js` | 4 案例：官方 CheckMacValue 向量、竄改金額拒絕、staging AIO 表單欄位、本機通知路由 |
+| `tests/shipping.test.js` | 21 案例：運費常數、基本運費、超商取貨、1,499／1,500 免運邊界、偏遠與急件附加費、多項附加費疊加、滿額免運與附加費同時成立 |
 | `tests/paymentScheduler.test.js` | 5 案例：建立付款表單、重複付款拒絕、驗簽入帳、金額不符、403 暫停與對外節流 |
 
 ## 啟動與請求生命週期
@@ -276,7 +278,12 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 | recipient_name | TEXT | NN | 收件姓名快照 |
 | recipient_email | TEXT | NN | 收件 email 快照 |
 | recipient_address | TEXT | NN | 收件地址快照 |
-| total_amount | INTEGER | NN，無正數 CHECK | 商品單價乘數量總和，不含運費 |
+| subtotal | INTEGER | NN、default 0 | 商品小計（單價乘數量總和，不含運費） |
+| shipping_fee | INTEGER | NN、default 0 | 運費，由 `src/utils/shipping.js` 計算 |
+| delivery_type | TEXT | NN、default 'home_delivery' | `home_delivery` 宅配、`convenience_store` 超商取貨 |
+| is_remote_area | INTEGER | NN、default 0、CHECK 0/1 | 是否偏遠地區 |
+| is_same_day_express | INTEGER | NN、default 0、CHECK 0/1 | 是否當日急件 |
+| total_amount | INTEGER | NN，無正數 CHECK | 商品小計＋運費，即實際應付金額，送往綠界的付款金額亦為此值 |
 | status | TEXT | NN、default 'pending'、CHECK pending/paid/failed | 訂單付款狀態，僅由驗證過的綠界查詢結果更新 |
 | created_at | TEXT | NN、default datetime('now') | 建立時間與排序 |
 
@@ -325,6 +332,12 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 交易保障的是這組寫入的原子性，不代表外部程序併發讀寫已完整解決。沒有 `stock >= quantity` 條件更新、衝突重試或 idempotency key；多程序情境可能遇到 stock CHECK／鎖錯誤並由集中 handler 回 500。訂單編號只有 UUID 前五碼作隨機部分，若撞到 UQ 沒有重試。
 
 刪商品先檢查 pending 訂單明細，存在即 409；若沒有 pending，直接 DELETE products。order_items 無商品 FK，可保留 paid／failed 歷史快照；但 cart_items 有商品 FK，因此任何仍引用該商品的購物車都可能讓刪除失敗並回 500。不能僅依「非 pending」判斷商品必定可刪。
+
+### 配送運費計算
+
+運費邏輯封裝於 `src/utils/shipping.js`，為不依賴資料庫或 HTTP 的純函數模組。費率：宅配基本運費 120 元、超商取貨 60 元（超商取貨不屬於基本運費，不受滿額免基本運費影響）、商品小計滿 1,500 元免基本運費（僅豁免宅配基本運費）、偏遠地區加收 200 元、當日急件加收 250 元。偏遠與急件附加費可同時成立並疊加，不受滿額免運影響；最終運費＝基本運費（可能為 0）＋附加費總額。
+
+建單時 `orderService.createOrderFromCart` 接收 `deliveryType`、`isRemoteArea`、`isSameDayExpress`（皆為選填，分別預設宅配、非偏遠、非急件），在建單交易內以商品小計呼叫 `calculateShipping`，將 `subtotal`、`shipping_fee`、`delivery_type`、`is_remote_area`、`is_same_day_express` 寫入 `orders` 表，並令 `total_amount` ＝ 商品小計＋運費。建單與訂單詳情回應皆會回傳上述運費欄位，供前端與綠界付款金額使用。
 
 ## 付款與第三方整合
 
