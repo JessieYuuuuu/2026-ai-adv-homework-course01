@@ -40,6 +40,7 @@ npm --version
 npm ci
 if (!(Test-Path -LiteralPath .env)) {
   Copy-Item -LiteralPath .env.example -Destination .env
+  Write-Host '已從 .env.example 複製 .env；請自行編輯 .env，將 JWT_SECRET 從預設 placeholder 替換為你自己的字串（或在啟動終端設定環境變數 JWT_SECRET）。'
 }
 # 此值只供本機教學；透過程序環境覆蓋範本中的 JWT placeholder。
 $env:JWT_SECRET = 'flower-life-local-development-secret-change-before-sharing'
@@ -54,6 +55,7 @@ node --version
 npm --version
 npm ci
 if [ ! -f .env ]; then cp .env.example .env; fi
+echo '已從 .env.example 複製 .env；請自行編輯 .env，將 JWT_SECRET 從預設 placeholder 替換為你自己的字串（或在啟動終端設定環境變數 JWT_SECRET）。'
 export JWT_SECRET='flower-life-local-development-secret-change-before-sharing'
 export FRONTEND_URL='http://localhost:3001'
 npm start

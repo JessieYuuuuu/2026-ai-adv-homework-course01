@@ -47,5 +47,8 @@ coverage/
 *.tmp
 *.swp
 
+# E2E 測試證據截圖（每次跑 e2e-payment-test 都會產生，不納入版本控制）
+docs/e2e/*.png
+
 .claude/*.local.json
 public/css/output.css
