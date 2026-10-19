@@ -4,9 +4,11 @@
 
 目前測試為 Vitest 2.1.9 + Supertest 7.2.2 的 API 整合測試。tests/setup.js 直接 require app，請求走真正 Express middleware、JWT、bcrypt、SQLite 與 seed，沒有 mock database 或第三方服務。Supertest 使用 app 建立測試所需 HTTP server，不需要先 `npm start` 或占用固定 3001。
 
-現有 10 份 `.test.js` 共 64 個 `it`：6 份一般 API 整合測試、2 份 ECPay 簽章／表單與付款排程測試、1 份 Shipping 純函數單元測試，以及 1 份訂單完整 Integration Test。另有 `tests/e2e/payment-flow.e2e.js` 使用 Playwright 連接既有 3001 服務與綠界 staging，完成真實測試付款及成功截圖。沒有 coverage provider、coverage script 或 CI pipeline；E2E 會新增真實測試資料，不能視為無副作用測試。
+現有 10 份 `.test.js` 共 64 個 `it`：6 份一般 API 整合測試、2 份 ECPay 簽章／表單與付款排程測試、1 份 Shipping 純函數單元測試，以及 1 份訂單完整 Integration Test。另有 `tests/e2e/payment-flow.e2e.js` 使用 Playwright 連接既有 3001 服務與綠界 staging，完成真實測試付款及成功截圖。沒有 coverage provider 或 coverage script；`.github/workflows/test.yml` 會在 push、pull request 或手動觸發時執行 Unit Test 與 Integration Test，不執行 E2E，也不啟動應用程式服務。E2E 會新增真實測試資料，不能視為無副作用測試。
 
 ## 實測紀錄
+
+2026-10-19 新增 GitHub Actions 測試 workflow；本機以 YAML parser 驗證格式與必要步驟，並實際執行 `npm run test:unit`（21/21）及 `npm run test:integration`（2/2）通過。GitHub 遠端狀態須待 workflow commit 並 push 後，由 Actions 實際執行確認。
 
 2026-10-19 執行完整測試流程：`npm run test:unit` 通過 21 案例；`npm run test:integration` 通過 2 案例，測試建立唯一系統暫存 SQLite 並於關閉連線後清除；`npm test` 通過 10 檔、64 案例。`npm run postman` 成功重新產生 `openapi.json` 與含 22 個請求的 Postman Collection。`npm run test:e2e` 直接連接已啟動的 `http://localhost:3001`，完成登入、加購、結帳、綠界網路 ATM、台灣土地銀行、Save、返回商店及 paid 狀態驗證，並輸出 `docs/e2e/payment-success.png`；此流程已在開發資料庫新增測試訂單與付款資料。
 
@@ -119,6 +121,17 @@ npm run postman
 ```
 
 輸出檔為 `postman/flower-life.postman_collection.json`，包含 `baseUrl`、`token`、`sessionId` 變數，登入成功後保存 JWT，受保護端點使用 Bearer Token。Collection 是可重建產物，不納入版本控制；應提交 `scripts/generate-postman.js` 與 OpenAPI 來源。
+
+### GitHub Actions
+
+`.github/workflows/test.yml` 使用 `ubuntu-latest` 與 Node.js 22，在 `npm ci` 後以兩個獨立步驟依序執行：
+
+```text
+npm run test:unit
+npm run test:integration
+```
+
+Workflow 由 push、pull request 或 GitHub Actions 頁面的手動操作觸發。它不執行 `npm run test:e2e`，不需要啟動 3001 服務，也不會讀寫儲存庫的 `database.sqlite`；Integration Test 仍使用自己的暫存 SQLite。GitHub 上的最終成功狀態只能在 workflow 檔案被 commit 並 push 後確認。
 
 ## 輔助函式
 

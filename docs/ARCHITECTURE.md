@@ -30,13 +30,14 @@ flowchart LR
 | --- | --- |
 | `app.js` | dotenv、建表、Express 設定、middleware／router 掛載、API／HTML 404、集中錯誤處理；匯出 app 供測試 |
 | `server.js` | 引入 app；直接執行時檢查 JWT_SECRET、監聽 PORT；被 require 時不 listen |
-| `package.json` | 套件名稱版本、CommonJS 預設、6 個 npm scripts 及直接依賴 |
+| `package.json` | 套件名稱版本、CommonJS 預設、測試／建置／啟動 scripts 及直接依賴 |
 | `package-lock.json` | lockfile v3，固定直接及遞移依賴的版本、完整性與引擎條件；不是業務邏輯 |
 | `.env.example` | JWT、URL、管理員與未接線 ECPay 變數範本 |
 | `.gitignore` | 排除 node_modules、SQLite、環境檔、coverage、日誌與 output.css；保留 `.env.example` |
 | `swagger-config.js` | OpenAPI 3.0.3 metadata、固定 localhost:3001 server、bearerAuth／sessionId schemes、路由掃描 glob |
 | `generate-openapi.js` | swagger-jsdoc 讀取設定，pretty JSON 覆寫根目錄 `openapi.json` |
 | `vitest.config.js` | globals、禁止測試檔平行、hookTimeout=10000，以及非有效排序保證的 sequence.files 陣列 |
+| `.github/workflows/test.yml` | push、pull request 與手動觸發的 GitHub Actions；Node.js 22 安裝依賴後分開執行 Unit 與 Integration Test，不執行 E2E |
 | `.codex/config.toml` | 本機代理 sandbox、approval 與 npm writable roots 設定；不參與應用程式執行 |
 | `.codex/rules/default.rules` | 本機命令規則，禁止列出的 rm -rf、sudo、git push、git reset --hard 前綴 |
 | `AGENTS.md` | 協作入口、常用指令、跨模組規則及 @docs 引用 |

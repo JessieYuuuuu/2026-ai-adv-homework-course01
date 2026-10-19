@@ -2,7 +2,7 @@
 
 ## 規範適用範圍
 
-本文件將「原始碼現況」與「新增程式應遵循的規範」分開說明。現況沒有 ESLint、Prettier、TypeScript、migration 或 CI 設定，不能將文件建議當成已由工具強制執行。開始修改前先讀 [AGENTS.md](../AGENTS.md)、對應功能路由及頁面、[ARCHITECTURE.md](./ARCHITECTURE.md) 的資料不變條件；API 可觀察行為以 [FEATURES.md](./FEATURES.md) 為基準。
+本文件將「原始碼現況」與「新增程式應遵循的規範」分開說明。現況沒有 ESLint、Prettier、TypeScript 或 migration；GitHub Actions 只自動執行 Shipping Unit Test 與訂單 Integration Test，不能將其他文件建議當成已由工具強制執行。開始修改前先讀 [AGENTS.md](../AGENTS.md)、對應功能路由及頁面、[ARCHITECTURE.md](./ARCHITECTURE.md) 的資料不變條件；API 可觀察行為以 [FEATURES.md](./FEATURES.md) 為基準。
 
 新功能應先明確列出會影響哪些模組：例如運費影響 cart／checkout 畫面、orders.total_amount、付款金額、訂單明細及測試；訪客車合併影響 auth、cart owner、資料約束及登入導頁。不能只在單一畫面或 route 補欄位就宣告整合完成。
 

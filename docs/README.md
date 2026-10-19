@@ -101,6 +101,8 @@ Invoke-RestMethod -Uri 'http://localhost:3001/api/products?page=1&limit=2'
 | `npm run postman` | 重新產生 OpenAPI 與 Postman Collection | 產物為 `postman/flower-life.postman_collection.json`，已忽略版本控制 |
 | `npm test -- tests/products.test.js` | 單檔案例 | `tests/setup.js` 仍會建立唯一暫存 SQLite |
 
+GitHub Actions 會在 push、pull request 或手動觸發時，使用 Node.js 22 與 `npm ci`，分開執行 `npm run test:unit` 和 `npm run test:integration`。CI 不執行 E2E，也不啟動前後端服務。
+
 開發時以兩個終端分別執行 `npm run dev:css`、`npm run dev:server`。這裡沒有 `npm run dev`、lint、format、migration、coverage 或正式部署 script。`npm start` 沒有自行設定 `NODE_ENV=production`。E2E 不會代為啟動伺服器，執行前須確認 `http://localhost:3001` 已可使用並已設定 ECPay staging 環境變數。
 
 ## 最短購買驗收流程
