@@ -1198,6 +1198,25 @@
                   },
                   "recipientAddress": {
                     "type": "string"
+                  },
+                  "deliveryType": {
+                    "type": "string",
+                    "enum": [
+                      "home_delivery",
+                      "convenience_store"
+                    ],
+                    "default": "home_delivery",
+                    "description": "配送方式，home_delivery 宅配、convenience_store 超商取貨"
+                  },
+                  "isRemoteArea": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "是否偏遠地區，成立時加收運費"
+                  },
+                  "isSameDayExpress": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "是否當日急件，成立時加收運費"
                   }
                 }
               }
@@ -1220,6 +1239,21 @@
                         },
                         "order_no": {
                           "type": "string"
+                        },
+                        "subtotal": {
+                          "type": "integer"
+                        },
+                        "shipping_fee": {
+                          "type": "integer"
+                        },
+                        "delivery_type": {
+                          "type": "string"
+                        },
+                        "is_remote_area": {
+                          "type": "integer"
+                        },
+                        "is_same_day_express": {
+                          "type": "integer"
                         },
                         "total_amount": {
                           "type": "integer"
@@ -1374,6 +1408,21 @@
                         "recipient_address": {
                           "type": "string"
                         },
+                        "subtotal": {
+                          "type": "integer"
+                        },
+                        "shipping_fee": {
+                          "type": "integer"
+                        },
+                        "delivery_type": {
+                          "type": "string"
+                        },
+                        "is_remote_area": {
+                          "type": "integer"
+                        },
+                        "is_same_day_express": {
+                          "type": "integer"
+                        },
                         "total_amount": {
                           "type": "integer"
                         },
@@ -1437,6 +1486,17 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "訂單 ID"
+          }
+        ],
         "responses": {
           "200": {
             "description": "回傳 action 與表單欄位"
@@ -1455,6 +1515,17 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "訂單 ID"
+          }
+        ],
         "responses": {
           "200": {
             "description": "目前付款狀態或下次可查時間"
@@ -1471,6 +1542,17 @@
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "訂單 ID"
           }
         ],
         "responses": {

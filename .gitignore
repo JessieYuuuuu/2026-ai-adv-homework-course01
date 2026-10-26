@@ -50,5 +50,8 @@ coverage/
 # E2E 測試證據截圖（每次跑 e2e-payment-test 都會產生，不納入版本控制）
 docs/e2e/*.png
 
+# OpenAPI 產生的 Postman Collection（可由 npm run postman 重建）
+postman/*.postman_collection.json
+
 .claude/*.local.json
 public/css/output.css

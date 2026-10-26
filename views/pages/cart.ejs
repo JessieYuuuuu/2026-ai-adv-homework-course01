@@ -2,14 +2,14 @@
   <h1 class="text-2xl font-bold text-text-primary mb-6" style="font-family: 'Noto Serif TC', serif;">購物車</h1>
 
   <div v-if="loading" class="flex justify-center py-12">
-    <div class="w-8 h-8 border-4 border-rose-primary border-t-transparent rounded-full animate-spin"></div>
+    <div class="w-8 h-8 border-4 border-brand-gold border-t-transparent rounded-full animate-spin"></div>
   </div>
 
   <div v-else-if="items.length === 0" class="text-center py-12">
     <div class="text-4xl mb-3">&#128722;</div>
     <p class="text-text-secondary mb-1">購物車是空的</p>
     <p class="text-text-muted text-sm mb-4">快去挑選喜歡的花束吧！</p>
-    <a href="/" class="inline-block bg-rose-primary text-white px-6 py-2 rounded-full text-sm hover:bg-rose-dark transition-colors">去逛逛</a>
+    <a href="/" class="inline-block bg-brand-gold text-white px-6 py-2 rounded-full text-sm hover:bg-brand-gold-dark transition-colors">去逛逛</a>
   </div>
 
   <template v-else>
@@ -27,7 +27,7 @@
         />
         <div class="flex-1 min-w-0">
           <h3 class="font-medium text-text-primary text-sm truncate">{{ item.product.name }}</h3>
-          <p class="text-rose-primary text-sm">NT$ {{ item.product.price.toLocaleString() }}</p>
+          <p class="text-brand-gold text-sm">NT$ {{ item.product.price.toLocaleString() }}</p>
         </div>
 
         <!-- Quantity Controls -->
@@ -68,13 +68,13 @@
     <div class="bg-white rounded-2xl shadow-sm p-6">
       <div class="flex justify-between items-center">
         <span class="font-bold text-text-primary">總計</span>
-        <span class="font-bold text-xl text-rose-primary">
+        <span class="font-bold text-xl text-brand-gold">
           NT$ {{ total.toLocaleString() }}
         </span>
       </div>
       <button
         @click="goCheckout"
-        class="w-full mt-4 bg-rose-primary text-white py-3 rounded-full text-sm font-medium hover:bg-rose-dark transition-colors"
+        class="w-full mt-4 bg-brand-gold text-white py-3 rounded-full text-sm font-medium hover:bg-brand-gold-dark transition-colors"
       >
         前往結帳
       </button>

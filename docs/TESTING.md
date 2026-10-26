@@ -4,9 +4,19 @@
 
 目前測試為 Vitest 2.1.9 + Supertest 7.2.2 的 API 整合測試。tests/setup.js 直接 require app，請求走真正 Express middleware、JWT、bcrypt、SQLite 與 seed，沒有 mock database 或第三方服務。Supertest 使用 app 建立測試所需 HTTP server，不需要先 `npm start` 或占用固定 3001。
 
-現有 8 份 `.test.js` 共 41 個 `it`：其中 6 份為一般 API 整合測試，另有 2 份 ECPay 簽章／表單、本機通知路由與付款排程測試。沒有 browser E2E、DOM 測試、視覺快照、真實測試卡付款、覆蓋率 provider、coverage script 或 CI pipeline。測試通過只能證明已斷言的基本 API 行為，不能推定跨 owner、交易 rollback 或所有輸入邊界已驗證。
+現有 10 份 `.test.js` 共 64 個 `it`：6 份一般 API 整合測試、2 份 ECPay 簽章／表單與付款排程測試、1 份 Shipping 純函數單元測試，以及 1 份訂單完整 Integration Test。另有 `tests/e2e/payment-flow.e2e.js` 使用 Playwright 連接既有 3001 服務與綠界 staging，完成真實測試付款及成功截圖。沒有 coverage provider 或 coverage script；`.github/workflows/test.yml` 會在 push、pull request 或手動觸發時執行 Unit Test 與 Integration Test，不執行 E2E，也不啟動應用程式服務。E2E 會新增真實測試資料，不能視為無副作用測試。
+
+目前 `npm run test:unit` 執行 `tests/` 下除 `tests/integration/**` 外的 9 份測試、共 62 個案例；名稱沿用作業指令，但內容包含 Shipping 純函數與既有 API／付款服務測試。`npm run test:integration` 再獨立執行 2 個訂單跨層案例，因此 CI 不會漏掉原有測試，也不會在兩個步驟重複執行完整 Integration Test。
 
 ## 實測紀錄
+
+2026-10-26 依作業審查回饋擴大 `test:unit` 範圍後，`npm run test:unit` 通過 9 檔、62 案例，`npm run test:integration` 通過 1 檔、2 案例；`npm run css:build`、E2E 腳本語法檢查及 E2E skill 驗證亦通過。未重跑會新增訂單與扣除庫存的外部 E2E。
+
+2026-10-19 新增 GitHub Actions 測試 workflow；本機以 YAML parser 驗證格式與必要步驟，並實際執行 `npm run test:unit`（21/21）及 `npm run test:integration`（2/2）通過。GitHub 遠端狀態須待 workflow commit 並 push 後，由 Actions 實際執行確認。
+
+2026-10-19 執行完整測試流程：`npm run test:unit` 通過 21 案例；`npm run test:integration` 通過 2 案例，測試建立唯一系統暫存 SQLite 並於關閉連線後清除；`npm test` 通過 10 檔、64 案例。`npm run postman` 成功重新產生 `openapi.json` 與含 22 個請求的 Postman Collection。`npm run test:e2e` 直接連接已啟動的 `http://localhost:3001`，完成登入、加購、結帳、綠界網路 ATM、台灣土地銀行、Save、返回商店及 paid 狀態驗證，並輸出 `docs/e2e/payment-success.png`；此流程已在開發資料庫新增測試訂單與付款資料。
+
+2026-10-19 在專案根目錄以獨立的 `DATABASE_PATH` 執行 `npm test`：9 份測試檔、62 個案例全部通過。新增的 `tests/shipping.test.js` 共 21 案例，涵蓋宅配、超商取貨、1,499／1,500 元免運邊界、偏遠地區、當日急件、附加費疊加及滿額免運與附加費同時成立；`tests/orders.test.js` 另驗證建單回應滿足 `total_amount = subtotal + shipping_fee`。測試沒有寫入專案根目錄的開發資料庫。
 
 2026-09-17 在專案根目錄執行 `npm test` 與 `npm run openapi`：8 份測試檔、41 個案例全部通過；OpenAPI 成功產生 17 個 path、22 個 method 操作。本機通知路由測試只驗證 HTTP 200 與純文字 `1|OK`，不代表綠界能連入 localhost 或通知內容已通過驗簽。測試使用唯一的暫存 SQLite 檔。
 
@@ -44,6 +54,10 @@
 | `tests/adminOrders.test.js` | 4 | 列表、pending篩選、詳情、會員403 | beforeAll登入admin並註冊會員、加1件、建立pending訂單 |
 | `tests/ecpayService.test.js` | 4 | 官方 SHA256 CheckMacValue 向量、竄改金額驗簽失敗、AIO staging 表單、本機通知路由 | 不呼叫綠界；使用固定測試商店參數與 Supertest |
 | `tests/paymentScheduler.test.js` | 5 | AIO 表單、pending 唯一約束、已簽章成功入帳、金額不符、HTTP 403 暫停與 5 秒節流 | 建單後以可注入 `fetchImpl` 模擬 QueryTradeInfo/V5；不對外發出 HTTP 請求 |
+| `tests/shipping.test.js` | 21 | 配送費率常數、宅配／超商取貨、1,499／1,500 免運邊界、偏遠與急件附加費、疊加規則及預設值 | 直接測試不依賴資料庫或 HTTP 的 `src/utils/shipping.js` 純函數 |
+| `tests/integration/order-flow.test.js` | 2 | 會員→商品→購物車→含配送建單；DB 訂單／明細、費用、庫存、清車與強制失敗回滾 | 每次建立唯一系統暫存 SQLite，結束時關閉並清除 DB、WAL、SHM |
+
+`tests/e2e/payment-flow.e2e.js` 是獨立 Playwright 程式，不計入上述 Vitest 案例數；它使用真實站點、綠界 staging 與目前開發資料庫。成功判斷只讀取付款完成收據與訂單列表的可見內容，不從頁面內直接呼叫訂單 API。
 
 現有多數負向案例只斷言 error 非 null，而非精確機器碼；新增測試應同時斷言 status、error 及必要副作用，避免錯誤分支完全不同卻仍通過。
 
@@ -53,7 +67,7 @@ vitest.config.js 設 `globals:true`，所以 test 檔不用 import describe／it
 
 設定中 `sequence.files` 列了 auth → products → cart → orders → adminProducts → adminOrders 的檔名字串，但這不是本版 Vitest 的自訂排序器，不能當作實際執行順序保證。本次實際順序為 orders → cart → adminProducts → auth → adminOrders → products，與陣列不同。若日後需要特定檔案排序，應實作對應 sequencer；更好的 fixture 設計是不依賴其他檔案先完成。
 
-跨檔沒有直接共享 JavaScript 變數，但共享同一 SQLite 檔與 seed 商品。兩份 orders 測試各扣1件；cart 的會員加2件保留在DB；反覆執行會累積會員／訂單並消耗商品庫存，且 seed 不補非空商品表。不要以禁止平行推定已做到資料隔離。
+同一次 Vitest 執行中，跨檔沒有直接共享 JavaScript 變數，但會共享該次程序專用的暫存 SQLite 與 seed 商品。兩份 orders 測試各扣 1 件；cart 的會員加 2 件會保留到該次執行結束，因此同一次 run 仍有檔案間資料耦合。再次執行會建立新的暫存資料庫，不會累積到根目錄 `database.sqlite`；不要以禁止平行推定單一 run 內已做到逐檔資料隔離。
 
 檔內鏈式依賴如下：
 
@@ -70,42 +84,11 @@ adminOrders:   beforeAll會員加購與建單 → 詳情
 
 ## 安全且可重現的執行方式
 
-### 為何要用可丟棄副本
+### 測試資料庫隔離
 
-DB 路徑由 src/database.js 依檔案位置固定，`NODE_ENV=test` 只改 seed bcrypt cost，不會使用記憶體 DB。單純切 cwd、改 PORT 或設定 DATABASE_URL 都不會隔離已引入的原檔案。需要複製 app／src／tests 等第一方檔案到另一個目錄，再從副本啟動測試。
+`src/database.js` 優先使用 `DATABASE_PATH`，未設定才讀取專案根目錄的 `database.sqlite`。`tests/setup.js` 會在載入 app 前，為每個測試程序建立唯一的系統暫存 SQLite 路徑並寫入 `DATABASE_PATH`，因此一般執行 `npm test` 不會修改開發資料庫。若呼叫不經過 `tests/setup.js` 的自訂測試程式，應自行先設定獨立的 `DATABASE_PATH`。
 
-以下 PowerShell 範例使用已安裝的根目錄 node_modules，建立唯一名稱的專案內副本。只複製明列的第一方來源，不複製 `.env`／資料庫／`.git`；junction 只共用套件，不共用 src/database.js：
-
-```powershell
-# 在原專案根目錄執行，先完成 npm ci。
-$testSource = (Get-Location).Path
-$testCopy = Join-Path $testSource ('.tmp-test-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $testCopy | Out-Null
-$testFiles = @(
-  'app.js', 'server.js', 'src', 'tests', 'views', 'public',
-  'package.json', 'package-lock.json', 'vitest.config.js',
-  'swagger-config.js', 'generate-openapi.js'
-)
-foreach ($testFile in $testFiles) {
-  Copy-Item -LiteralPath (Join-Path $testSource $testFile) -Destination $testCopy -Recurse
-}
-New-Item -ItemType Junction -Path (Join-Path $testCopy 'node_modules') `
-  -Target (Join-Path $testSource 'node_modules') | Out-Null
-Push-Location $testCopy
-try {
-  $env:JWT_SECRET = 'flower-life-isolated-test-secret'
-  $env:NODE_ENV = 'test'
-  $env:ADMIN_EMAIL = 'admin@hexschool.com'
-  $env:ADMIN_PASSWORD = '12345678'
-  npm test
-} finally {
-  Pop-Location
-}
-```
-
-在專用測試終端跑此範例，環境變數會留在該終端直到關閉。驗證完自行檢查並清理剛建立的唯一副本，先移除 junction 本身、不要遞迴操作它指向的 node_modules；不應提供或使用泛配刪除所有 `.sqlite` 的命令。若環境不支援 junction，可在副本內 `npm ci` 安裝依賴。
-
-### 已在可丟棄環境的簡短命令
+在專案根目錄安裝依賴後，可直接執行：
 
 ```powershell
 $env:JWT_SECRET = 'flower-life-isolated-test-secret'
@@ -113,7 +96,7 @@ $env:NODE_ENV = 'test'
 $env:ADMIN_EMAIL = 'admin@hexschool.com'
 $env:ADMIN_PASSWORD = '12345678'
 npm test
-npm test -- tests/products.test.js
+npm test -- tests/shipping.test.js
 ```
 
 ```sh
@@ -122,6 +105,39 @@ ADMIN_EMAIL=admin@hexschool.com ADMIN_PASSWORD=12345678 npm test
 ```
 
 不要先用已更改管理員帳號的 DB 跑再試圖靠環境變數恢復預設；seed 不更新已存在帳號。測試失敗先看首次失敗的 status/body，而非只看後續 `.data.token` undefined。
+
+### E2E 與 Postman
+
+先在另一個終端啟動並保持專案服務，再執行 E2E：
+
+```powershell
+npm start
+# 另一個終端
+npm run test:e2e
+```
+
+E2E 預設使用 `admin@hexschool.com`／`12345678`，可由 `E2E_BASE_URL`、`E2E_EMAIL`、`E2E_PASSWORD`、`E2E_HEADLESS` 與 `PLAYWRIGHT_EXECUTABLE_PATH` 覆蓋。測試不會啟動伺服器；若 3001 無法連線會立即失敗。流程會加入商品、建立訂單與付款交易，確實修改目前服務所使用的資料庫；成功截圖輸出至 `docs/e2e/payment-success.png`，失敗時輸出 `docs/e2e/payment-failure.png`，兩者皆為可重建證據且不納入版本控制。
+
+`.agents/skills/e2e-payment-test/SKILL.md` 定義共用安全限制與五項 UI 驗收條件，並將流程分成兩種互不混用的模式：Playwright MCP 信用卡／3D 人工驗收，以及上述 `npm run test:e2e` 網路 ATM 自動驗收。MCP 由 `.codex/config.toml` 以 `--isolated` 啟動。
+
+Postman Collection 由目前 OpenAPI 產生：
+
+```powershell
+npm run postman
+```
+
+輸出檔為 `postman/flower-life.postman_collection.json`，包含 `baseUrl`、`token`、`sessionId` 變數，登入成功後保存 JWT，受保護端點使用 Bearer Token。Collection 是可重建產物，不納入版本控制；應提交 `scripts/generate-postman.js` 與 OpenAPI 來源。
+
+### GitHub Actions
+
+`.github/workflows/test.yml` 使用 `ubuntu-latest` 與 Node.js 22，在 `npm ci` 後以兩個獨立步驟依序執行：
+
+```text
+npm run test:unit
+npm run test:integration
+```
+
+Workflow 由 push、pull request 或 GitHub Actions 頁面的手動操作觸發。它不執行 `npm run test:e2e`，不需要啟動 3001 服務，也不會讀寫儲存庫的 `database.sqlite`；Integration Test 仍使用自己的暫存 SQLite。GitHub 上的最終成功狀態只能在 workflow 檔案被 commit 並 push 後確認。
 
 ## 輔助函式
 
@@ -221,7 +237,7 @@ describe('Cart ownership', () => {
 | 雙模式 | JWT與session同送、無效Bearer不得fallback、非Bearer+session | cart 核心非標準機制尚未完整測 |
 | 數量 | 預設1、0、負數、小數、字串、累加超庫存 | parseInt 行為易和schema分歧 |
 | 建單 | 扣庫存精確值、清車、快照不隨商品更新、任一寫入失敗回滾 | 現有空車案只間接驗證清車 |
-| 金額 | 低於500與等於500、改價後建單 | 運費只在前端，尚無一致性測試 |
+| 金額 | 各配送選項經 HTTP 建單、改價後建單、付款金額一致 | 已有 Shipping 純函數測試與建單總額加總斷言；尚缺各配送組合的 API 整合測試 |
 | 付款 | success/fail、重付、他人訂單、不合法action、失敗不補庫存 | 現有orders.test完全未呼叫pay |
 | 刪商品 | pending 409、cart FK 500、paid/failed歷史快照保留 | 現有只刪無引用的新商品 |
 | 分頁 | 0、負數、>100、末頁外、非法status被忽略 | 現有只測limit=2和pending |
@@ -248,7 +264,7 @@ describe('Cart ownership', () => {
 | `.data.token` 為 null／undefined | helper沒檢查登入狀態；先查JWT_SECRET、seed admin、原始response |
 | 單一it失敗但整檔通過 | 檔內前案提供id／token；改fixture而非強制檔案排序 |
 | STOCK_INSUFFICIENT出現在fixture | 重跑消耗共用seed；新副本或測試專屬商品 |
-| NODE_ENV=test仍改到開發DB | DB位置未分環境；要複製src而不是只改cwd |
+| 自訂測試仍改到開發 DB | 程式未經 `tests/setup.js` 載入；在 require app／database 前明確設定測試專用 `DATABASE_PATH` |
 | 刪商品500 | cart_items外鍵仍引用；pending檢查不是唯一限制 |
 | 測試回200卻付款失敗 | action=fail是正常模擬，需斷言data.status |
 | API測試過但UI沒反應 | 未建CSS、Vue CDN失敗、DOM id／腳本順序不符；Supertest不跑瀏覽器 |

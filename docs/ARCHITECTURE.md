@@ -30,15 +30,17 @@ flowchart LR
 | --- | --- |
 | `app.js` | dotenv、建表、Express 設定、middleware／router 掛載、API／HTML 404、集中錯誤處理；匯出 app 供測試 |
 | `server.js` | 引入 app；直接執行時檢查 JWT_SECRET、監聽 PORT；被 require 時不 listen |
-| `package.json` | 套件名稱版本、CommonJS 預設、6 個 npm scripts 及直接依賴 |
+| `package.json` | 套件名稱版本、CommonJS 預設、測試／建置／啟動 scripts 及直接依賴 |
 | `package-lock.json` | lockfile v3，固定直接及遞移依賴的版本、完整性與引擎條件；不是業務邏輯 |
 | `.env.example` | JWT、URL、管理員與未接線 ECPay 變數範本 |
 | `.gitignore` | 排除 node_modules、SQLite、環境檔、coverage、日誌與 output.css；保留 `.env.example` |
 | `swagger-config.js` | OpenAPI 3.0.3 metadata、固定 localhost:3001 server、bearerAuth／sessionId schemes、路由掃描 glob |
 | `generate-openapi.js` | swagger-jsdoc 讀取設定，pretty JSON 覆寫根目錄 `openapi.json` |
 | `vitest.config.js` | globals、禁止測試檔平行、hookTimeout=10000，以及非有效排序保證的 sequence.files 陣列 |
-| `.codex/config.toml` | 本機代理 sandbox、approval 與 npm writable roots 設定；不參與應用程式執行 |
+| `.github/workflows/test.yml` | push、pull request 與手動觸發的 GitHub Actions；Node.js 22 安裝依賴後分開執行 Unit 與 Integration Test，不執行 E2E |
+| `.codex/config.toml` | 本機代理 sandbox、approval、npm writable roots，以及以 `--isolated` 啟動的 Playwright MCP；不參與應用程式執行 |
 | `.codex/rules/default.rules` | 本機命令規則，禁止列出的 rm -rf、sudo、git push、git reset --hard 前綴 |
+| `.agents/skills/e2e-payment-test/SKILL.md` | ECPay staging 成功付款驗收規範；區分 MCP 信用卡／3D 人工模式與 npm 網路 ATM 自動模式，共用 UI 驗收與安全邊界 |
 | `AGENTS.md` | 協作入口、常用指令、跨模組規則及 @docs 引用 |
 | `docs/README.md` | 項目介紹、安裝與啟動、技術版本及索引 |
 | `docs/ARCHITECTURE.md` | 本文件；資料結構與跨模組契約 |
@@ -66,6 +68,7 @@ flowchart LR
 | `src/routes/cartRoutes.js` | 私有 dualAuth、owner SQL 選擇、查詢／累加／取代數量／刪除購物車項目 |
 | `src/routes/orderRoutes.js` | 訂單 API 輸入驗證／回應、個人列表／詳情、ECPay 付款表單與本人查詢 |
 | `src/services/orderService.js` | 會員購物車建單交易、明細快照、庫存扣除與清車 |
+| `src/utils/shipping.js` | 獨立純函數配送費用模組，負責宅配／超商取貨基本運費、滿額免運、偏遠地區與當日急件附加費計算 |
 | `src/routes/ecpayRoutes.js` | 本機 ReturnURL 占位路由；回覆純文字 `1|OK`，不驗簽或更新訂單 |
 | `src/services/ecpayService.js` | 僅限 staging 的設定檢查、CheckMacValue 建立／驗證、AIO 表單與 QueryTradeInfo/V5 請求 |
 | `src/services/paymentScheduler.js` | 付款查詢節流、403 暫停、結果驗證、訂單狀態更新與 30 秒背景掃描 |
@@ -90,7 +93,7 @@ flowchart LR
 | `public/js/pages/order-detail.js` | 讀訂單與付款摘要、建立 AIO 表單並導轉、付款頁返回後查詢，以及手動查詢狀態 |
 | `public/js/pages/admin-products.js` | limit=10 列表、新增／編輯 modal、刪除確認與重載當頁 |
 | `public/js/pages/admin-orders.js` | limit=10 列表、watch statusFilter 後回第一頁、詳情 modal |
-| `public/css/input.css` | Tailwind import、11 個色彩 token、Noto Sans TC 與 body 基礎樣式 |
+| `public/css/input.css` | Tailwind import、前台香檳金與後台玫瑰色等語意色彩 token、Noto Sans TC、body 基礎樣式及集中式響應規則 |
 | `public/stylesheets/style.css` | 遺留的 Express 預設樣式；現有 head 沒有引用 |
 
 ### EJS 模板
@@ -128,13 +131,17 @@ flowchart LR
 | `tests/adminProducts.test.js` | 6 案例：列表、建立、更新、刪除、普通會員／無 token 拒絕 |
 | `tests/adminOrders.test.js` | 4 案例：列表、pending 篩選、詳情、普通會員拒絕 |
 | `tests/ecpayService.test.js` | 4 案例：官方 CheckMacValue 向量、竄改金額拒絕、staging AIO 表單欄位、本機通知路由 |
+| `tests/shipping.test.js` | 21 案例：運費常數、基本運費、超商取貨、1,499／1,500 免運邊界、偏遠與急件附加費、多項附加費疊加、滿額免運與附加費同時成立 |
 | `tests/paymentScheduler.test.js` | 5 案例：建立付款表單、重複付款拒絕、驗簽入帳、金額不符、403 暫停與對外節流 |
+| `tests/integration/order-flow.test.js` | 2 案例：完整訂單資料流與資料庫交易失敗回滾；使用唯一暫存 SQLite 並自行清理 |
+| `tests/e2e/payment-flow.e2e.js` | Playwright 操作既有 3001 服務與綠界 staging，驗證網路 ATM 測試付款、返回站點，以及付款收據與訂單列表的可見狀態；不直接呼叫訂單 API |
+| `scripts/generate-postman.js` | 將最新 `openapi.json` 轉為具變數、JWT 保存與 Bearer Token 的 Postman Collection |
 
 ## 啟動與請求生命週期
 
 1. `npm start` 先以 Tailwind CLI 將 input.css 編成 output.css；只有成功才執行 server.js。
 2. server.js 頂層 require app.js；app.js 先 `dotenv.config()`。預設讀目前工作目錄 `.env`，因此命令應在專案根目錄執行。
-3. require database.js 立即開啟 `path.join(__dirname, '..', 'database.sqlite')`，啟用 WAL、foreign_keys，建表、seed 管理員，再 seed 商品。
+3. require database.js 立即開啟 `DATABASE_PATH` 指定的 SQLite；未設定時才使用 `path.join(__dirname, '..', 'database.sqlite')`。接著啟用 WAL、foreign_keys，建表、seed 管理員，再 seed 商品。
 4. 建立 Express app，設定 EJS 與絕對 views 路徑。
 5. 先掛 `express.static(public)`；成功命中的靜態請求不必經過後面的 CORS、body parser 或 session middleware。
 6. 全域 middleware 依序為 CORS → express.json → express.urlencoded({ extended:false }) → sessionMiddleware。CORS origin 使用 FRONTEND_URL 或 localhost:3001，未啟用 credentials。
@@ -276,7 +283,12 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 | recipient_name | TEXT | NN | 收件姓名快照 |
 | recipient_email | TEXT | NN | 收件 email 快照 |
 | recipient_address | TEXT | NN | 收件地址快照 |
-| total_amount | INTEGER | NN，無正數 CHECK | 商品單價乘數量總和，不含運費 |
+| subtotal | INTEGER | NN、default 0 | 商品小計（單價乘數量總和，不含運費） |
+| shipping_fee | INTEGER | NN、default 0 | 運費，由 `src/utils/shipping.js` 計算 |
+| delivery_type | TEXT | NN、default 'home_delivery' | `home_delivery` 宅配、`convenience_store` 超商取貨 |
+| is_remote_area | INTEGER | NN、default 0、CHECK 0/1 | 是否偏遠地區 |
+| is_same_day_express | INTEGER | NN、default 0、CHECK 0/1 | 是否當日急件 |
+| total_amount | INTEGER | NN，無正數 CHECK | 商品小計＋運費，即實際應付金額，送往綠界的付款金額亦為此值 |
 | status | TEXT | NN、default 'pending'、CHECK pending/paid/failed | 訂單付款狀態，僅由驗證過的綠界查詢結果更新 |
 | created_at | TEXT | NN、default datetime('now') | 建立時間與排序 |
 
@@ -326,10 +338,16 @@ localStorage 鍵名是 `flower_token`、`flower_user`、`flower_session_id`；se
 
 刪商品先檢查 pending 訂單明細，存在即 409；若沒有 pending，直接 DELETE products。order_items 無商品 FK，可保留 paid／failed 歷史快照；但 cart_items 有商品 FK，因此任何仍引用該商品的購物車都可能讓刪除失敗並回 500。不能僅依「非 pending」判斷商品必定可刪。
 
+### 配送運費計算
+
+運費邏輯封裝於 `src/utils/shipping.js`，為不依賴資料庫或 HTTP 的純函數模組。費率：宅配基本運費 120 元、超商取貨 60 元（超商取貨不屬於基本運費，不受滿額免基本運費影響）、商品小計滿 1,500 元免基本運費（僅豁免宅配基本運費）、偏遠地區加收 200 元、當日急件加收 250 元。偏遠與急件附加費可同時成立並疊加，不受滿額免運影響；最終運費＝基本運費（可能為 0）＋附加費總額。
+
+建單時 `orderService.createOrderFromCart` 接收 `deliveryType`、`isRemoteArea`、`isSameDayExpress`（皆為選填，分別預設宅配、非偏遠、非急件），在建單交易內以商品小計呼叫 `calculateShipping`，將 `subtotal`、`shipping_fee`、`delivery_type`、`is_remote_area`、`is_same_day_express` 寫入 `orders` 表，並令 `total_amount` ＝ 商品小計＋運費。建單與訂單詳情回應皆會回傳上述運費欄位，供前端與綠界付款金額使用。
+
 ## 付款與第三方整合
 
 現行付款流程：本人登入 → POST `/:id/payment` 建立唯一待確認交易並取得 AIO 表單欄位（`ChoosePayment=ALL`）→ 瀏覽器同頁 POST 至綠界測試付款頁，並經 ClientBackURL 回到訂單頁 → 後端於付款後 10 分鐘主動查詢並驗證 CheckMacValue、MerchantID、MerchantTradeNo 與金額 → 才更新為 paid 或已確認 failed。背景排程每 30 秒掃描到期資料，但單一交易至少間隔 10 分鐘，403 會持久暫停 30 分鐘。表單顯示所有付款方式；ATM、超商、條碼與 BNPL 等離線方式未完成本機端到端驗收。
 
-失敗付款不回補庫存、不重開購物車；只有綠界回傳 `TradeStatus=10200095` 的已驗證失敗可建立新交易。瀏覽器 query／返回網址不改資料庫。本機 `POST /api/ecpay/notify` 直接回覆 `1|OK`，不驗簽或更新訂單；付款狀態仍只由後端主動查詢更新。僅支援 ECPay staging，尚未完成真實端到端驗收。
+失敗付款不回補庫存、不重開購物車；只有綠界回傳 `TradeStatus=10200095` 的已驗證失敗可建立新交易。瀏覽器 query／返回網址不直接改資料庫。本機 `POST /api/ecpay/notify` 直接回覆 `1|OK`，不驗簽或更新訂單；付款狀態仍只由後端主動查詢更新。僅支援 ECPay staging；Playwright 已完成網路 ATM／台灣土地銀行的真實 E2E 驗收，其他付款方式尚未逐一驗證。
 
 真正外部整合限瀏覽器載入 Vue（unpkg）、Google Fonts 與 Unsplash 圖片。後端不代理圖片、不儲存上傳、不驗證圖片 URL 內容；新增商品只存 image_url。網站的品牌好評、配送與月配文案不代表有評論、物流或訂閱服務。

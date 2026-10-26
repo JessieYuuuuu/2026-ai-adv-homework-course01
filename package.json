@@ -8,7 +8,11 @@
     "dev:css": "npx @tailwindcss/cli -i public/css/input.css -o public/css/output.css --watch",
     "css:build": "npx @tailwindcss/cli -i public/css/input.css -o public/css/output.css --minify",
     "openapi": "node generate-openapi.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run tests --exclude tests/integration/**",
+    "test:integration": "vitest run tests/integration/order-flow.test.js",
+    "test:e2e": "node tests/e2e/payment-flow.e2e.js",
+    "postman": "npm run openapi && node scripts/generate-postman.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -24,6 +28,7 @@
   "devDependencies": {
     "@playwright/mcp": "^0.0.83",
     "@tailwindcss/cli": "^4.2.2",
+    "playwright": "^1.64.1",
     "supertest": "^7.2.2",
     "tailwindcss": "^4.2.2",
     "vitest": "^2.1.9"

@@ -15,7 +15,7 @@
 | ECPay 本機主動查詢付款 | ✅ 完成 | AIO、驗簽、持久排程與 9 個付款相關測試完成；ReturnURL 僅有本機占位路由，未處理 Server Notify |
 | 後台商品 CRUD | ✅ 完成 | 6 個 API 測試；刪除可能受購物車外鍵阻擋 |
 | 後台訂單篩選／詳情 | ✅ 完成 | 4 個 API 測試；沒有修改訂單端點 |
-| 運費 | 🚧 進行中 | 購物車、結帳與訂單均只顯示和保存商品小計；首頁仍保留未接線的免運宣傳文案 |
+| 運費 | ✅ 完成 | `src/utils/shipping.js` 純函數模組；建單依配送方式、滿額免運、偏遠地區與當日急件計算運費，`total_amount` = 商品小計＋運費；21 個單元測試 |
 | Toast、空狀態、loading | ✅ 完成 | 無瀏覽器自動測試；部分 API 失敗會偽裝成空列表 |
 | 購物車 badge | ✅ 完成 | 以目前購物車項目筆數同步；沒有瀏覽器自動測試 |
 | 訂閱、評論、物流、退款 | 🚧 進行中 | 靜態文案／商品說明不等於業務功能 |
@@ -122,7 +122,7 @@ apiFetch 的 401 一律清身分、導 `/login`、回 undefined，這也包含�
 
 ### 金額與 badge 差異
 
-購物車、結帳與訂單頁均顯示商品小計；後端 `cart.total`／`orders.total_amount` 與送往綠界的金額相同。運費、折扣與稅額尚未實作；首頁的「滿額免運」僅為未接線的靜態宣傳文案。
+購物車頁顯示商品小計；結帳與訂單頁顯示商品小計與運費，後端 `cart.total` 為商品小計，`orders.total_amount` 為商品小計＋運費，送往綠界的付款金額亦為 `orders.total_amount`。折扣與稅額尚未實作；首頁的「滿額免運」文案現已對應後端運費規則。
 
 header 初始載入、首頁／詳情成功加購，以及購物車改量／刪除後，都重新讀取目前購物車的 `items.length`。同商品重複加購時，badge 仍反映項目列數，不會把數字當成商品總件數或金額。
 
@@ -137,11 +137,19 @@ header 初始載入、首頁／詳情成功加購，以及購物車改量／刪�
 | recipientName | 必填 | truthy，存 recipient_name |
 | recipientEmail | 必填 | truthy 且同註冊 email regex，存 recipient_email |
 | recipientAddress | 必填 | truthy，存 recipient_address |
+| deliveryType | 選填，預設 home_delivery | `home_delivery` 宅配、`convenience_store` 超商取貨，存 delivery_type |
+| isRemoteArea | 選填，預設 false | 偏遠地區，成立時加收 200 元，存 is_remote_area |
+| isSameDayExpress | 選填，預設 false | 當日急件，成立時加收 250 元，存 is_same_day_express |
 | items、total、userId、status 等 | 不使用 | 商品、價格、使用者、狀態由伺服器決定 |
 
-前端 additionally 對姓名／地址 trim 驗空白；後端沒有相同 trim，因此不能把 UI 限制作 API 保證。驗收件資料後讀取 user_id 購物車 JOIN 商品，無項目 400 CART_EMPTY，任一 quantity>stock 回 400 STOCK_INSUFFICIENT 並列商品名稱。金額以當下商品價格重算，不相信請求 total，也不含稅、折扣或運費。
+前端 additionally 對姓名／地址 trim 驗空白；後端沒有相同 trim，因此不能把 UI 限制作 API 保證。驗收件資料後讀取 user_id 購物車 JOIN 商品，無項目 400 CART_EMPTY，任一 quantity>stock 回 400 STOCK_INSUFFICIENT 並列商品名稱。金額以當下商品價格重算，不相信請求 total，不含稅或折扣；運費由 `src/utils/shipping.js` 計算後加總：
 
-通過檢查後產生訂單 id、`ORD-<UTC YYYYMMDD>-<UUID 前五碼大寫>`。`src/services/orderService.js` 在單一 `db.transaction` 內讀取購物車、檢查庫存、計算金額、寫訂單與明細快照、逐項以庫存條件扣除庫存並清空此會員購物車。沒有併發 retry；SQL 失敗會回滾寫入，未處理錯誤回 500。
+- 宅配基本運費 120 元，超商取貨 60 元（超商取貨不屬於基本運費，不受滿額免基本運費影響）。
+- 商品小計滿 1,500 元免基本運費（僅豁免宅配的 120 元基本運費）。
+- 偏遠地區加收 200 元、當日急件加收 250 元，兩者可同時成立並疊加，不受滿額免運影響。
+- 訂單 `total_amount` = 商品小計 `subtotal` ＋ 運費 `shipping_fee`，兩者皆寫入 orders 表並回傳給前端。
+
+通過檢查後產生訂單 id、`ORD-<UTC YYYYMMDD>-<UUID 前五碼大寫>`。`src/services/orderService.js` 在單一 `db.transaction` 內讀取購物車、檢查庫存、計算商品小計與運費、寫訂單與明細快照、逐項以庫存條件扣除庫存並清空此會員購物車。沒有併發 retry；SQL 失敗會回滾寫入，未處理錯誤回 500。
 
 成功 201，data 僅包含 `id,order_no,total_amount,status,items,created_at`；此處 items 只有 `product_name,product_price,quantity`，與詳情 items 的完整欄位不同。初始 status=pending，扣庫存已發生，不等待付款。商品 updated_at 在扣庫存時不更新。
 
@@ -161,7 +169,7 @@ JWT 必要。用訂單 id 和 req.user.userId 同時查詢；查無或他人訂�
 
 ### POST /api/orders/:id/payment
 
-不需要 body。後端先檢查 staging 設定，再以已保存的 `orders.total_amount`、訂單明細快照建立一筆 `payment_attempts`，回傳 ECPay AIO 的 `action`、隱藏欄位和 `payment` 摘要。前端將欄位組成同頁 POST 表單；`ChoosePayment=ALL` 讓測試付款頁顯示所有付款方式。ATM、超商、條碼與 BNPL 等離線付款尚未完成本機端到端驗收；不能把顯示選項視為已完整支援付款確認。
+不需要 body。後端先檢查 staging 設定，再以已保存的 `orders.total_amount`、訂單明細快照建立一筆 `payment_attempts`，回傳 ECPay AIO 的 `action`、隱藏欄位和 `payment` 摘要。前端將欄位組成同頁 POST 表單；`ChoosePayment=ALL` 讓測試付款頁顯示所有付款方式。Playwright 已完成網路 ATM／台灣土地銀行的本機端到端驗收；超商、條碼與 BNPL 等其他付款方式尚未逐一驗證，不能把顯示選項視為全部方式都已完整支援付款確認。
 
 ### POST /api/ecpay/notify
 
