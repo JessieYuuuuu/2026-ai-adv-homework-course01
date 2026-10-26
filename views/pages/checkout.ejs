@@ -4,7 +4,7 @@
   </div>
 
   <div v-if="loading" class="flex justify-center py-12">
-    <div class="w-8 h-8 border-4 border-rose-primary border-t-transparent rounded-full animate-spin"></div>
+    <div class="w-8 h-8 border-4 border-brand-gold border-t-transparent rounded-full animate-spin"></div>
   </div>
 
   <div v-else class="checkout-layout content-shell">
@@ -16,17 +16,17 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm text-text-secondary mb-1">收件人姓名</label>
-            <input v-model="form.recipientName" type="text" placeholder="請輸入收件人姓名" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors" :class="{ 'border-red-400': errors.recipientName }">
+            <input v-model="form.recipientName" type="text" placeholder="請輸入收件人姓名" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold transition-colors" :class="{ 'border-red-400': errors.recipientName }">
             <p v-if="errors.recipientName" class="text-red-500 text-xs mt-1">{{ errors.recipientName }}</p>
           </div>
           <div>
             <label class="block text-sm text-text-secondary mb-1">電子郵件</label>
-            <input v-model="form.recipientEmail" type="email" placeholder="name@example.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors" :class="{ 'border-red-400': errors.recipientEmail }">
+            <input v-model="form.recipientEmail" type="email" placeholder="name@example.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold transition-colors" :class="{ 'border-red-400': errors.recipientEmail }">
             <p v-if="errors.recipientEmail" class="text-red-500 text-xs mt-1">{{ errors.recipientEmail }}</p>
           </div>
           <div>
             <label class="block text-sm text-text-secondary mb-1">收件地址</label>
-            <input v-model="form.recipientAddress" type="text" placeholder="請輸入完整配送地址" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-primary transition-colors" :class="{ 'border-red-400': errors.recipientAddress }">
+            <input v-model="form.recipientAddress" type="text" placeholder="請輸入完整配送地址" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-gold transition-colors" :class="{ 'border-red-400': errors.recipientAddress }">
             <p v-if="errors.recipientAddress" class="text-red-500 text-xs mt-1">{{ errors.recipientAddress }}</p>
           </div>
         </div>
@@ -113,7 +113,7 @@
         <div class="total-row"><span>運費</span><span>NT$ {{ shippingFee.toLocaleString() }}</span></div>
         <div class="total-row is-final"><span>應付總額</span><strong>NT$ {{ orderTotal.toLocaleString() }}</strong></div>
       </div>
-      <button @click="submitOrder" :disabled="submitting" class="w-full bg-rose-primary text-white py-3 text-sm font-medium hover:bg-rose-dark transition-colors disabled:opacity-50">
+      <button @click="submitOrder" :disabled="submitting" class="w-full bg-brand-gold text-white py-3 text-sm font-medium hover:bg-brand-gold-dark transition-colors disabled:opacity-50">
         {{ submitting ? '建立訂單中...' : '建立訂單並繼續付款' }}
       </button>
       <p class="checkout-disclaimer">建立後將前往訂單頁啟動綠界付款，付款結果以後端查詢確認為準。</p>

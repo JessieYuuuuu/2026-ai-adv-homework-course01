@@ -19,8 +19,18 @@
 | `npm run css:build` | 產生壓縮的 `public/css/output.css` |
 | `npm run openapi` | 從路由註解產生根目錄 `openapi.json`，不啟動 Swagger UI |
 | `npm test` | 執行 Vitest／Supertest；測試設定會使用獨立暫存 SQLite，不修改根目錄 `database.sqlite` |
+| `npm run test:unit` | 執行 `tests/` 下除完整 Integration Test 外的 9 份測試，涵蓋既有 API、付款服務與 Shipping 純函數 |
+| `npm run test:integration` | 執行訂單跨層整合與交易回滾測試，使用獨立暫存 SQLite |
+| `npm run test:e2e` | 操作既有服務與 ECPay staging 的網路 ATM 流程；會新增訂單、付款紀錄並扣除庫存 |
+| `npm run postman` | 重新產生 OpenAPI 後輸出已忽略版控的 Postman Collection |
 
 啟動前設定 `JWT_SECRET`；`server.js` 直接執行時缺值會退出，但資料庫初始化發生在檢查之前。Vitest 由 `tests/setup.js` 設定獨立暫存資料庫，Integration Test 另建並清除自己的 SQLite；E2E 則刻意操作已啟動站點，會新增真實測試訂單並扣除庫存。
+
+## E2E 工具
+
+- `.agents/skills/e2e-payment-test/SKILL.md` 定義 ECPay staging 成功付款驗收與安全邊界，分為 Playwright MCP 信用卡／3D 人工驗收，以及 `npm run test:e2e` 網路 ATM 自動驗收；兩種模式都只能從可見 UI 核對結果，不得以頁面內 API 呼叫或資料庫讀取代替。
+- `.codex/config.toml` 登錄 repository 內的 Playwright MCP，並以 `--isolated` 啟動。這是本機代理工具設定，不參與應用程式執行；不得另建重複的 `.mcp.json`。
+- E2E 只允許 ECPay staging。執行前確認服務、測試帳號與庫存，完成後依 skill 收尾；不得在不明狀態下重送付款。
 
 ## 關鍵規則
 

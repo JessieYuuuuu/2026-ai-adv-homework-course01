@@ -38,8 +38,9 @@ flowchart LR
 | `generate-openapi.js` | swagger-jsdoc 讀取設定，pretty JSON 覆寫根目錄 `openapi.json` |
 | `vitest.config.js` | globals、禁止測試檔平行、hookTimeout=10000，以及非有效排序保證的 sequence.files 陣列 |
 | `.github/workflows/test.yml` | push、pull request 與手動觸發的 GitHub Actions；Node.js 22 安裝依賴後分開執行 Unit 與 Integration Test，不執行 E2E |
-| `.codex/config.toml` | 本機代理 sandbox、approval 與 npm writable roots 設定；不參與應用程式執行 |
+| `.codex/config.toml` | 本機代理 sandbox、approval、npm writable roots，以及以 `--isolated` 啟動的 Playwright MCP；不參與應用程式執行 |
 | `.codex/rules/default.rules` | 本機命令規則，禁止列出的 rm -rf、sudo、git push、git reset --hard 前綴 |
+| `.agents/skills/e2e-payment-test/SKILL.md` | ECPay staging 成功付款驗收規範；區分 MCP 信用卡／3D 人工模式與 npm 網路 ATM 自動模式，共用 UI 驗收與安全邊界 |
 | `AGENTS.md` | 協作入口、常用指令、跨模組規則及 @docs 引用 |
 | `docs/README.md` | 項目介紹、安裝與啟動、技術版本及索引 |
 | `docs/ARCHITECTURE.md` | 本文件；資料結構與跨模組契約 |
@@ -92,7 +93,7 @@ flowchart LR
 | `public/js/pages/order-detail.js` | 讀訂單與付款摘要、建立 AIO 表單並導轉、付款頁返回後查詢，以及手動查詢狀態 |
 | `public/js/pages/admin-products.js` | limit=10 列表、新增／編輯 modal、刪除確認與重載當頁 |
 | `public/js/pages/admin-orders.js` | limit=10 列表、watch statusFilter 後回第一頁、詳情 modal |
-| `public/css/input.css` | Tailwind import、11 個色彩 token、Noto Sans TC 與 body 基礎樣式 |
+| `public/css/input.css` | Tailwind import、前台香檳金與後台玫瑰色等語意色彩 token、Noto Sans TC、body 基礎樣式及集中式響應規則 |
 | `public/stylesheets/style.css` | 遺留的 Express 預設樣式；現有 head 沒有引用 |
 
 ### EJS 模板
@@ -133,7 +134,7 @@ flowchart LR
 | `tests/shipping.test.js` | 21 案例：運費常數、基本運費、超商取貨、1,499／1,500 免運邊界、偏遠與急件附加費、多項附加費疊加、滿額免運與附加費同時成立 |
 | `tests/paymentScheduler.test.js` | 5 案例：建立付款表單、重複付款拒絕、驗簽入帳、金額不符、403 暫停與對外節流 |
 | `tests/integration/order-flow.test.js` | 2 案例：完整訂單資料流與資料庫交易失敗回滾；使用唯一暫存 SQLite 並自行清理 |
-| `tests/e2e/payment-flow.e2e.js` | Playwright 操作既有 3001 服務與綠界 staging，驗證網路 ATM 測試付款、返回站點及 paid 狀態 |
+| `tests/e2e/payment-flow.e2e.js` | Playwright 操作既有 3001 服務與綠界 staging，驗證網路 ATM 測試付款、返回站點，以及付款收據與訂單列表的可見狀態；不直接呼叫訂單 API |
 | `scripts/generate-postman.js` | 將最新 `openapi.json` 轉為具變數、JWT 保存與 Bearer Token 的 Postman Collection |
 
 ## 啟動與請求生命週期

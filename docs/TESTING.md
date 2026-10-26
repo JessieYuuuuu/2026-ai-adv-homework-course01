@@ -6,7 +6,11 @@
 
 現有 10 份 `.test.js` 共 64 個 `it`：6 份一般 API 整合測試、2 份 ECPay 簽章／表單與付款排程測試、1 份 Shipping 純函數單元測試，以及 1 份訂單完整 Integration Test。另有 `tests/e2e/payment-flow.e2e.js` 使用 Playwright 連接既有 3001 服務與綠界 staging，完成真實測試付款及成功截圖。沒有 coverage provider 或 coverage script；`.github/workflows/test.yml` 會在 push、pull request 或手動觸發時執行 Unit Test 與 Integration Test，不執行 E2E，也不啟動應用程式服務。E2E 會新增真實測試資料，不能視為無副作用測試。
 
+目前 `npm run test:unit` 執行 `tests/` 下除 `tests/integration/**` 外的 9 份測試、共 62 個案例；名稱沿用作業指令，但內容包含 Shipping 純函數與既有 API／付款服務測試。`npm run test:integration` 再獨立執行 2 個訂單跨層案例，因此 CI 不會漏掉原有測試，也不會在兩個步驟重複執行完整 Integration Test。
+
 ## 實測紀錄
+
+2026-10-26 依作業審查回饋擴大 `test:unit` 範圍後，`npm run test:unit` 通過 9 檔、62 案例，`npm run test:integration` 通過 1 檔、2 案例；`npm run css:build`、E2E 腳本語法檢查及 E2E skill 驗證亦通過。未重跑會新增訂單與扣除庫存的外部 E2E。
 
 2026-10-19 新增 GitHub Actions 測試 workflow；本機以 YAML parser 驗證格式與必要步驟，並實際執行 `npm run test:unit`（21/21）及 `npm run test:integration`（2/2）通過。GitHub 遠端狀態須待 workflow commit 並 push 後，由 Actions 實際執行確認。
 
@@ -53,7 +57,7 @@
 | `tests/shipping.test.js` | 21 | 配送費率常數、宅配／超商取貨、1,499／1,500 免運邊界、偏遠與急件附加費、疊加規則及預設值 | 直接測試不依賴資料庫或 HTTP 的 `src/utils/shipping.js` 純函數 |
 | `tests/integration/order-flow.test.js` | 2 | 會員→商品→購物車→含配送建單；DB 訂單／明細、費用、庫存、清車與強制失敗回滾 | 每次建立唯一系統暫存 SQLite，結束時關閉並清除 DB、WAL、SHM |
 
-`tests/e2e/payment-flow.e2e.js` 是獨立 Playwright 程式，不計入上述 Vitest 案例數；它使用真實站點、綠界 staging 與目前開發資料庫。
+`tests/e2e/payment-flow.e2e.js` 是獨立 Playwright 程式，不計入上述 Vitest 案例數；它使用真實站點、綠界 staging 與目前開發資料庫。成功判斷只讀取付款完成收據與訂單列表的可見內容，不從頁面內直接呼叫訂單 API。
 
 現有多數負向案例只斷言 error 非 null，而非精確機器碼；新增測試應同時斷言 status、error 及必要副作用，避免錯誤分支完全不同卻仍通過。
 
@@ -113,6 +117,8 @@ npm run test:e2e
 ```
 
 E2E 預設使用 `admin@hexschool.com`／`12345678`，可由 `E2E_BASE_URL`、`E2E_EMAIL`、`E2E_PASSWORD`、`E2E_HEADLESS` 與 `PLAYWRIGHT_EXECUTABLE_PATH` 覆蓋。測試不會啟動伺服器；若 3001 無法連線會立即失敗。流程會加入商品、建立訂單與付款交易，確實修改目前服務所使用的資料庫；成功截圖輸出至 `docs/e2e/payment-success.png`，失敗時輸出 `docs/e2e/payment-failure.png`，兩者皆為可重建證據且不納入版本控制。
+
+`.agents/skills/e2e-payment-test/SKILL.md` 定義共用安全限制與五項 UI 驗收條件，並將流程分成兩種互不混用的模式：Playwright MCP 信用卡／3D 人工驗收，以及上述 `npm run test:e2e` 網路 ATM 自動驗收。MCP 由 `.codex/config.toml` 以 `--isolated` 啟動。
 
 Postman Collection 由目前 OpenAPI 產生：
 

@@ -108,6 +108,14 @@ async function waitForSaveControl(context, timeout = 30000) {
   throw new Error(`找不到可操作的「Save」；目前頁面：${urls}`);
 }
 
+async function readDefinitionValue(container, label) {
+  const row = container.locator('dl > div').filter({
+    has: container.getByText(label, { exact: true }),
+  });
+  assert.equal(await row.count(), 1, `畫面應只有一個「${label}」欄位`);
+  return (await row.locator('dd').innerText()).trim();
+}
+
 async function run() {
   fs.mkdirSync(evidenceDir, { recursive: true });
   await assertExistingServer();
@@ -146,6 +154,10 @@ async function run() {
     const orderId = new URL(page.url()).pathname.split('/').pop();
     assert.ok(orderId, '建立訂單後應取得訂單 ID');
     await page.getByRole('heading', { name: '訂單已建立' }).waitFor();
+    const orderNumberText = await page.locator('.order-confirmation > span').innerText();
+    const orderNumber = orderNumberText.replace(/^訂單編號\s*/, '').trim();
+    assert.ok(orderNumber, '建立訂單後畫面應顯示訂單編號');
+    const orderAmount = await readDefinitionValue(page.locator('.order-detail-card'), '訂單金額');
     await page.getByRole('button', { name: '前往綠界付款' }).click();
     await page.waitForURL(/payment-stage\.ecpay\.com\.tw/i, { timeout: 30000 });
 
@@ -172,17 +184,11 @@ async function run() {
     await page.waitForURL(url => url.origin === new URL(baseUrl).origin, { timeout: 30000 });
 
     await page.getByRole('heading', { name: '付款完成' }).waitFor({ timeout: 60000 });
-
-    const order = await page.evaluate(async id => {
-      const token = localStorage.getItem('flower_token');
-      const response = await fetch(`/api/orders/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.message || `HTTP ${response.status}`);
-      return body.data;
-    }, orderId);
-    assert.equal(order.status, 'paid');
+    const receipt = page.locator('.payment-receipt');
+    assert.equal(await readDefinitionValue(receipt, '訂單編號'), orderNumber);
+    assert.equal(await readDefinitionValue(receipt, '付款方式'), '綠界 ECPay');
+    assert.equal(await readDefinitionValue(receipt, '付款金額'), orderAmount);
+    assert.equal(await readDefinitionValue(receipt, '配送狀態'), '準備中');
 
     await page.screenshot({ path: successScreenshot, fullPage: true });
 
