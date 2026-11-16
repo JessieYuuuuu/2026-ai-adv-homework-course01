@@ -19,7 +19,7 @@
 | `npm run css:build` | 產生壓縮的 `public/css/output.css` |
 | `npm run openapi` | 從路由註解產生根目錄 `openapi.json`，不啟動 Swagger UI |
 | `npm test` | 執行 Vitest／Supertest；測試設定會使用獨立暫存 SQLite，不修改根目錄 `database.sqlite` |
-| `npm run test:unit` | 執行 `tests/` 下除完整 Integration Test 外的 9 份測試，涵蓋既有 API、付款服務與 Shipping 純函數 |
+| `npm run test:unit` | 執行 `tests/shipping.test.js` 的 21 個 Shipping 純函數單元測試 |
 | `npm run test:integration` | 執行訂單跨層整合與交易回滾測試，使用獨立暫存 SQLite |
 | `npm run setup:e2e` | 依 `tests/e2e/package-lock.json` 安裝本機 Playwright E2E 與 MCP 依賴；根目錄 `npm ci` 不安裝這些套件 |
 | `npm run test:e2e` | 先執行 `setup:e2e`，再操作既有服務與 ECPay staging 的網路 ATM 流程；會新增訂單、付款紀錄並扣除庫存 |

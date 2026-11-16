@@ -9,7 +9,7 @@
     "css:build": "npx @tailwindcss/cli -i public/css/input.css -o public/css/output.css --minify",
     "openapi": "node generate-openapi.js",
     "test": "vitest run",
-    "test:unit": "vitest run tests --exclude tests/integration/**",
+    "test:unit": "vitest run tests/shipping.test.js",
     "test:integration": "vitest run tests/integration/order-flow.test.js",
     "setup:e2e": "npm ci --prefix tests/e2e",
     "test:e2e": "npm run setup:e2e && node tests/e2e/payment-flow.e2e.js",

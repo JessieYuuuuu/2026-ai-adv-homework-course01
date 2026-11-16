@@ -97,7 +97,7 @@ Invoke-RestMethod -Uri 'http://localhost:3001/api/products?page=1&limit=2'
 | `npm run css:build` | Tailwind `--minify` | 產物是忽略追蹤的 `public/css/output.css` |
 | `npm run openapi` | `node generate-openapi.js` | 產生／覆寫 `openapi.json`；須在根目錄執行 |
 | `npm test` | `vitest run` | 64 個案例均使用系統暫存 SQLite，不修改開發資料庫 |
-| `npm run test:unit` | 除完整 Integration Test 外的既有測試 | 9 檔、62 個案例，涵蓋 API、付款服務與 Shipping 純函數 |
+| `npm run test:unit` | Shipping 純函數單元測試 | `tests/shipping.test.js`，21 個案例 |
 | `npm run test:integration` | 訂單跨層整合測試 | 使用唯一暫存 SQLite，驗證寫入、庫存、清車與交易回滾 |
 | `npm run setup:e2e` | 安裝獨立的 Playwright E2E 與 MCP 依賴 | 依 `tests/e2e/package-lock.json` 安裝；使用 MCP 前須先執行 |
 | `npm run test:e2e` | Playwright 綠界付款流程 | 先執行 `setup:e2e`，再連接已啟動的 3001 服務；會在目前資料庫新增真實測試訂單與付款資料 |

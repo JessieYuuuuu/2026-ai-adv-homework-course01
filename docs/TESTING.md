@@ -6,9 +6,11 @@
 
 現有 10 份 `.test.js` 共 64 個 `it`：6 份一般 API 整合測試、2 份 ECPay 簽章／表單與付款排程測試、1 份 Shipping 純函數單元測試，以及 1 份訂單完整 Integration Test。另有 `tests/e2e/payment-flow.e2e.js` 使用 Playwright 連接既有 3001 服務與綠界 staging，完成真實測試付款及成功截圖。沒有 coverage provider 或 coverage script；`.github/workflows/test.yml` 會在 push、pull request 或手動觸發時執行 Unit Test 與 Integration Test，不執行 E2E，也不啟動應用程式服務。E2E 會新增真實測試資料，不能視為無副作用測試。
 
-目前 `npm run test:unit` 執行 `tests/` 下除 `tests/integration/**` 外的 9 份測試、共 62 個案例；名稱沿用作業指令，但內容包含 Shipping 純函數與既有 API／付款服務測試。`npm run test:integration` 再獨立執行 2 個訂單跨層案例，因此 CI 不會漏掉原有測試，也不會在兩個步驟重複執行完整 Integration Test。
+目前 `npm run test:unit` 只執行 `tests/shipping.test.js` 的 21 個 Shipping 純函數案例；`npm run test:integration` 獨立執行 2 個訂單跨層案例。其餘既有 API／付款服務測試仍可用 `npm test` 執行，但不在目前 CI 的兩條測試指令範圍內。
 
 ## 實測紀錄
+
+2026-11-16 將 `test:unit` 還原為 Shipping 單檔後，`npm run test:unit` 通過 1 檔、21 案例，`npm run test:integration` 通過 1 檔、2 案例；後者需允許本機 Supertest 回環連線。GitHub Actions 結果待提交並推送後確認。
 
 2026-11-16 將 Playwright 移至獨立的 E2E 鎖檔後，根目錄 `npm ci` 成功，確認根目錄無法解析 `playwright` 與 `@playwright/mcp`；`npm run test:unit` 通過 9 檔、62 案例，`npm run test:integration` 通過 1 檔、2 案例。`npm run setup:e2e` 成功安裝獨立依賴，E2E 腳本可解析 Playwright 且語法檢查通過，MCP CLI 路徑存在。未重跑會新增付款測試訂單的外部 E2E。
 
