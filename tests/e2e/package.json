@@ -1,0 +1,9 @@
+{
+  "name": "flower-life-e2e-tools",
+  "version": "1.0.0",
+  "private": true,
+  "devDependencies": {
+    "@playwright/mcp": "^0.0.83",
+    "playwright": "1.64.1"
+  }
+}

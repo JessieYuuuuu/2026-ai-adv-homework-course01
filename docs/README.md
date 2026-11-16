@@ -10,7 +10,7 @@
 
 ## 技術棧
 
-以下版本來自提交中的 `package-lock.json`，不是最新版本推薦。鎖檔格式為 3；安裝請優先使用 `npm ci`。
+以下版本來自提交中的根目錄 `package-lock.json` 與 `tests/e2e/package-lock.json`，不是最新版本推薦。兩份鎖檔格式皆為 3；主專案使用 `npm ci`，本機 E2E 與 MCP 另使用 `npm run setup:e2e`。
 
 | 層次 | 技術／鎖定版本 | 在本專案的角色 |
 | --- | --- | --- |
@@ -23,12 +23,12 @@
 | 瀏覽器互動 | Vue 3 CDN global production build | 每頁 `createApp(...).mount('#app')`；不由 npm 鎖定確切版本 |
 | 樣式 | Tailwind CSS／CLI 4.2.2 | CSS-first `@theme`，產生 `/css/output.css` |
 | 文件生成 | swagger-jsdoc 6.2.8 | `@openapi` 註解轉為 OpenAPI 3.0.3 JSON |
-| 測試 | Vitest 2.1.9、Supertest 7.2.2、Playwright 1.64.1 穩定版範圍 | 10 份 Vitest 測試檔、64 個案例，另有連接既有服務的綠界付款 E2E |
+| 測試 | Vitest 2.1.9、Supertest 7.2.2、Playwright 1.64.1 | 10 份 Vitest 測試檔、64 個案例，另有連接既有服務的綠界付款 E2E |
 | 外部資源 | unpkg、Google Fonts、Unsplash | Vue、中文字型與商品／形象圖片；瀏覽器需可連線 |
 
 better-sqlite3 鎖定版本宣告支援 Node `20.x || 22.x || 23.x || 24.x || 25.x`，bcrypt 要求 Node `>=18`。原生套件安裝可能需要下載預編譯檔，缺少相符檔案時會進入本機編譯；不能只看 Express 的最低 Node 版本選擇環境。
 
-專案 E2E 腳本直接使用 `playwright@^1.64.1` 穩定版。`@playwright/mcp@0.0.83` 目前仍由其上游套件固定遞移依賴 Playwright alpha，兩者在 lockfile 中分開安裝；repository 無法在不替換 MCP 套件的情況下改寫該上游依賴。
+專案 E2E 腳本直接使用 `playwright@1.64.1` 穩定版，避免拆分依賴時順帶升級。`@playwright/mcp@0.0.83` 目前仍由其上游套件固定遞移依賴 Playwright alpha，兩者在 `tests/e2e/package-lock.json` 中分開安裝；repository 無法在不替換 MCP 套件的情況下改寫該上游依賴。根目錄 `npm ci` 不安裝這兩項本機工具，避免只跑 Unit／Integration 的 GitHub Actions 安裝用不到的套件。
 
 ## 快速開始
 
@@ -99,13 +99,14 @@ Invoke-RestMethod -Uri 'http://localhost:3001/api/products?page=1&limit=2'
 | `npm test` | `vitest run` | 64 個案例均使用系統暫存 SQLite，不修改開發資料庫 |
 | `npm run test:unit` | 除完整 Integration Test 外的既有測試 | 9 檔、62 個案例，涵蓋 API、付款服務與 Shipping 純函數 |
 | `npm run test:integration` | 訂單跨層整合測試 | 使用唯一暫存 SQLite，驗證寫入、庫存、清車與交易回滾 |
-| `npm run test:e2e` | Playwright 綠界付款流程 | 只連接已啟動的 3001 服務；會在目前資料庫新增真實測試訂單與付款資料 |
+| `npm run setup:e2e` | 安裝獨立的 Playwright E2E 與 MCP 依賴 | 依 `tests/e2e/package-lock.json` 安裝；使用 MCP 前須先執行 |
+| `npm run test:e2e` | Playwright 綠界付款流程 | 先執行 `setup:e2e`，再連接已啟動的 3001 服務；會在目前資料庫新增真實測試訂單與付款資料 |
 | `npm run postman` | 重新產生 OpenAPI 與 Postman Collection | 產物為 `postman/flower-life.postman_collection.json`，已忽略版本控制 |
 | `npm test -- tests/products.test.js` | 單檔案例 | `tests/setup.js` 仍會建立唯一暫存 SQLite |
 
-GitHub Actions 會在 push、pull request 或手動觸發時，使用 Node.js 22 與 `npm ci`，分開執行 `npm run test:unit` 和 `npm run test:integration`。CI 不執行 E2E，也不啟動前後端服務。
+GitHub Actions 會在 push、pull request 或手動觸發時，使用 Node.js 22 與根目錄 `npm ci`，分開執行 `npm run test:unit` 和 `npm run test:integration`。CI 不安裝 `tests/e2e/` 的 Playwright 依賴、不執行 E2E，也不啟動前後端服務。
 
-E2E 的共用安全邊界與兩種執行模式記錄在 `.agents/skills/e2e-payment-test/SKILL.md`：Playwright MCP 使用信用卡／3D 人工驗收，repository 的 `npm run test:e2e` 則執行網路 ATM 自動驗收。`.codex/config.toml` 已將 Playwright MCP 設為 `--isolated`；自動腳本與 MCP 模式皆只從可見 UI 核對付款結果，不直接呼叫專案 API。
+E2E 的共用安全邊界與兩種執行模式記錄在 `.agents/skills/e2e-payment-test/SKILL.md`：Playwright MCP 使用信用卡／3D 人工驗收，repository 的 `npm run test:e2e` 則執行網路 ATM 自動驗收。使用 MCP 前先執行 `npm run setup:e2e`；`.codex/config.toml` 指向獨立安裝位置並以 `--isolated` 啟動。自動腳本與 MCP 模式皆只從可見 UI 核對付款結果，不直接呼叫專案 API。
 
 開發時以兩個終端分別執行 `npm run dev:css`、`npm run dev:server`。這裡沒有 `npm run dev`、lint、format、migration、coverage 或正式部署 script。`npm start` 沒有自行設定 `NODE_ENV=production`。E2E 不會代為啟動伺服器，執行前須確認 `http://localhost:3001` 已可使用並已設定 ECPay staging 環境變數。
 

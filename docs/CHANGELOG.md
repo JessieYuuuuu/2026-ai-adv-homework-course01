@@ -26,6 +26,7 @@
 
 ### Changed
 
+- 2026-11-16 依第三週作業回饋將 Playwright E2E 與 MCP 依賴移至 `tests/e2e/` 獨立鎖檔；根目錄 `npm ci` 不再安裝 CI 用不到的 Playwright 套件。`test:e2e` 保留原入口並於本機先安裝 E2E 依賴；MCP 使用前須執行 `npm run setup:e2e`。
 - 2026-10-26 依作業回饋同步代理與測試文件：`AGENTS.md` 補上 Unit、Integration、E2E、Postman 指令及 E2E skill／Playwright MCP 用途；付款 skill 明確區分 MCP 信用卡／3D 與 npm 網路 ATM 模式。完整修改與驗證見 [計畫紀錄](./plans/archive/2026-10-26-homework-review-fixes.md)。
 - 2026-10-26 E2E 自動腳本移除頁面內訂單 API 呼叫，改由訂單建立頁與付款完成收據核對訂單編號、ECPay、金額及配送狀態，再從訂單列表確認「已付款」。
 - 2026-10-26 `test:unit` 改為涵蓋 `tests/` 下除完整 Integration Test 外的既有測試；專案直接使用的 Playwright 改採 `^1.64.1` 穩定版範圍。

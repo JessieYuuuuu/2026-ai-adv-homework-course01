@@ -10,6 +10,8 @@
 
 ## 實測紀錄
 
+2026-11-16 將 Playwright 移至獨立的 E2E 鎖檔後，根目錄 `npm ci` 成功，確認根目錄無法解析 `playwright` 與 `@playwright/mcp`；`npm run test:unit` 通過 9 檔、62 案例，`npm run test:integration` 通過 1 檔、2 案例。`npm run setup:e2e` 成功安裝獨立依賴，E2E 腳本可解析 Playwright 且語法檢查通過，MCP CLI 路徑存在。未重跑會新增付款測試訂單的外部 E2E。
+
 2026-10-26 依作業審查回饋擴大 `test:unit` 範圍後，`npm run test:unit` 通過 9 檔、62 案例，`npm run test:integration` 通過 1 檔、2 案例；`npm run css:build`、E2E 腳本語法檢查及 E2E skill 驗證亦通過。未重跑會新增訂單與扣除庫存的外部 E2E。
 
 2026-10-19 新增 GitHub Actions 測試 workflow；本機以 YAML parser 驗證格式與必要步驟，並實際執行 `npm run test:unit`（21/21）及 `npm run test:integration`（2/2）通過。GitHub 遠端狀態須待 workflow commit 並 push 後，由 Actions 實際執行確認。
@@ -108,7 +110,7 @@ ADMIN_EMAIL=admin@hexschool.com ADMIN_PASSWORD=12345678 npm test
 
 ### E2E 與 Postman
 
-先在另一個終端啟動並保持專案服務，再執行 E2E：
+先在另一個終端啟動並保持專案服務，再執行 E2E；`test:e2e` 會先依 `tests/e2e/package-lock.json` 安裝獨立的 Playwright 依賴：
 
 ```powershell
 npm start
@@ -118,7 +120,7 @@ npm run test:e2e
 
 E2E 預設使用 `admin@hexschool.com`／`12345678`，可由 `E2E_BASE_URL`、`E2E_EMAIL`、`E2E_PASSWORD`、`E2E_HEADLESS` 與 `PLAYWRIGHT_EXECUTABLE_PATH` 覆蓋。測試不會啟動伺服器；若 3001 無法連線會立即失敗。流程會加入商品、建立訂單與付款交易，確實修改目前服務所使用的資料庫；成功截圖輸出至 `docs/e2e/payment-success.png`，失敗時輸出 `docs/e2e/payment-failure.png`，兩者皆為可重建證據且不納入版本控制。
 
-`.agents/skills/e2e-payment-test/SKILL.md` 定義共用安全限制與五項 UI 驗收條件，並將流程分成兩種互不混用的模式：Playwright MCP 信用卡／3D 人工驗收，以及上述 `npm run test:e2e` 網路 ATM 自動驗收。MCP 由 `.codex/config.toml` 以 `--isolated` 啟動。
+`.agents/skills/e2e-payment-test/SKILL.md` 定義共用安全限制與五項 UI 驗收條件，並將流程分成兩種互不混用的模式：Playwright MCP 信用卡／3D 人工驗收，以及上述 `npm run test:e2e` 網路 ATM 自動驗收。使用 MCP 前須先執行 `npm run setup:e2e`；MCP 由 `.codex/config.toml` 指向 `tests/e2e/node_modules/` 並以 `--isolated` 啟動。
 
 Postman Collection 由目前 OpenAPI 產生：
 
@@ -130,7 +132,7 @@ npm run postman
 
 ### GitHub Actions
 
-`.github/workflows/test.yml` 使用 `ubuntu-latest` 與 Node.js 22，在 `npm ci` 後以兩個獨立步驟依序執行：
+`.github/workflows/test.yml` 使用 `ubuntu-latest` 與 Node.js 22，在根目錄 `npm ci` 後以兩個獨立步驟依序執行；根目錄鎖檔不含 Playwright，CI 不會安裝 `tests/e2e/` 的獨立依賴：
 
 ```text
 npm run test:unit
